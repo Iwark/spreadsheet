@@ -35,7 +35,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestCells(t *testing.T) {
-	if ws.Cells[0][0] != "test" {
-		t.Errorf("Failed to get cell. got: '%s'", ws.Cells[0][0])
+	if ws.Rows[0][0] != "test" {
+		t.Errorf("Failed to get cell. got: '%s'", ws.Rows[0][0])
 	}
 }

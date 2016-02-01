@@ -26,7 +26,7 @@ func main(){
   service, _ := spreadsheet.New(client)
   sheets, _ := service.Sheets.Worksheets("1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4")
   ws, _ = sheets.Get(0)
-  for _, row := range ws.Cells {
+  for _, row := range ws.Rows {
     for _, cell := range row {
       fmt.Println(cell)
     }

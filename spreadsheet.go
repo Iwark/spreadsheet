@@ -136,16 +136,16 @@ type Worksheet struct {
 	ss        *SheetsService
 	MaxRowNum int
 	MaxColNum int
-	Cells     [][]string
+	Rows      [][]string
 }
 
 func (ws *Worksheet) Build(ss *SheetsService) error {
 	ws.ss = ss
-	xmlCells, err := ws.fetchCells()
+	cells, err := ws.fetchCells()
 	if err != nil {
 		return err
 	}
-	for _, cell := range xmlCells.Entries {
+	for _, cell := range cells.Entries {
 		if cell.Pos.Row > ws.MaxRowNum {
 			ws.MaxRowNum = cell.Pos.Row
 		}
@@ -153,14 +153,14 @@ func (ws *Worksheet) Build(ss *SheetsService) error {
 			ws.MaxColNum = cell.Pos.Col
 		}
 	}
-	cells := make([][]string, ws.MaxRowNum)
+	rows := make([][]string, ws.MaxRowNum)
 	for i := 0; i < ws.MaxRowNum; i++ {
-		cells[i] = make([]string, ws.MaxColNum)
+		rows[i] = make([]string, ws.MaxColNum)
 	}
-	for _, cell := range xmlCells.Entries {
-		cells[cell.Pos.Row-1][cell.Pos.Col-1] = cell.Content
+	for _, cell := range cells.Entries {
+		rows[cell.Pos.Row-1][cell.Pos.Col-1] = cell.Content
 	}
-	ws.Cells = cells
+	ws.Rows = rows
 
 	return nil
 }
