@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"time"
 )
 
@@ -100,8 +101,9 @@ func (w *Worksheets) Get(i int) (*Worksheet, error) {
 
 // FindById returns the worksheet of passed id
 func (w *Worksheets) FindById(id string) (*Worksheet, error) {
+	var validID = regexp.MustCompile(fmt.Sprintf("%s$", id))
 	for _, e := range w.Entries {
-		if e.Id == id {
+		if validID.MatchString(e.Id) {
 			err := e.Build(w.ss)
 			if err != nil {
 				return nil, err
