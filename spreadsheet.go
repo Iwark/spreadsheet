@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -135,18 +136,32 @@ type Worksheet struct {
 	Content string    `xml:"content"`
 	Links   []Link    `xml:"link"`
 
-	ss        *SheetsService
-	MaxRowNum int
-	MaxColNum int
-	Rows      [][]string
+	ss            *SheetsService
+	CellsFeed     string
+	MaxRowNum     int
+	MaxColNum     int
+	Rows          [][]*Cell
+	modifiedCells []*Cell
 }
 
 func (ws *Worksheet) Build(ss *SheetsService) error {
+
 	ws.ss = ss
-	cells, err := ws.fetchCells()
+
+	for _, l := range ws.Links {
+		if l.Rel == "http://schemas.google.com/spreadsheets/2006#cellsfeed" {
+			ws.CellsFeed = l.Href
+			break
+		}
+	}
+
+	var cells *Cells
+	err := ws.ss.s.fetchAndUnmarshal(fmt.Sprintf("%s?return-empty=true", ws.CellsFeed), &cells)
 	if err != nil {
 		return err
 	}
+	ws.modifiedCells = make([]*Cell, 0)
+
 	for _, cell := range cells.Entries {
 		if cell.Pos.Row > ws.MaxRowNum {
 			ws.MaxRowNum = cell.Pos.Row
@@ -155,31 +170,64 @@ func (ws *Worksheet) Build(ss *SheetsService) error {
 			ws.MaxColNum = cell.Pos.Col
 		}
 	}
-	rows := make([][]string, ws.MaxRowNum)
+	rows := make([][]*Cell, ws.MaxRowNum)
 	for i := 0; i < ws.MaxRowNum; i++ {
-		rows[i] = make([]string, ws.MaxColNum)
+		rows[i] = make([]*Cell, ws.MaxColNum)
 	}
 	for _, cell := range cells.Entries {
-		rows[cell.Pos.Row-1][cell.Pos.Col-1] = cell.Content
+		rows[cell.Pos.Row-1][cell.Pos.Col-1] = cell
 	}
 	ws.Rows = rows
 
 	return nil
 }
 
-func (ws *Worksheet) fetchCells() (*Cells, error) {
-	var url string
-	for _, l := range ws.Links {
-		if l.Rel == "http://schemas.google.com/spreadsheets/2006#cellsfeed" {
-			url = l.Href
+func (ws *Worksheet) UpdateCell(cell *Cell, content string) {
+	cell.Content = content
+	for _, mc := range ws.modifiedCells {
+		if mc.Id == cell.Id {
+			return
 		}
 	}
-	var cells *Cells
-	err := ws.ss.s.fetchAndUnmarshal(url, &cells)
-	if err != nil {
-		return nil, err
+	ws.modifiedCells = append(ws.modifiedCells, cell)
+}
+
+// Synchronize saves the modified cells
+func (ws *Worksheet) Synchronize() error {
+	feed := `
+    <feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:batch="http://schemas.google.com/gdata/batch"
+      xmlns:gs="http://schemas.google.com/spreadsheets/2006">
+  `
+	feed += fmt.Sprintf("<id>%s</id>", ws.CellsFeed)
+	for _, mc := range ws.modifiedCells {
+		feed += `<entry>`
+		feed += fmt.Sprintf("<batch:id>%d, %d</batch:id>", mc.Pos.Row, mc.Pos.Col)
+		feed += `<batch:operation type="update"/>`
+		feed += fmt.Sprintf("<id>%s</id>", mc.Id)
+		feed += fmt.Sprintf("<link rel=\"edit\" type=\"application/atom+xml\" href=\"%s\"/>", mc.EditLink())
+		feed += fmt.Sprintf("<gs:cell row=\"%d\" col=\"%d\" inputValue=\"%s\"/>", mc.Pos.Row, mc.Pos.Col, mc.Content)
+		feed += `</entry>`
 	}
-	return cells, nil
+	feed += `</feed>`
+	url := fmt.Sprintf("%s/batch", ws.CellsFeed)
+	req, err := http.NewRequest("POST", url, strings.NewReader(feed))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/atom+xml;charset=utf-8")
+
+	resp, err := ws.ss.s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type Link struct {
@@ -204,4 +252,13 @@ type Cell struct {
 		Row int `xml:"row,attr"`
 		Col int `xml:"col,attr"`
 	} `xml:"cell"`
+}
+
+func (c *Cell) EditLink() string {
+	for _, l := range c.Links {
+		if l.Rel == "edit" {
+			return l.Href
+		}
+	}
+	return ""
 }

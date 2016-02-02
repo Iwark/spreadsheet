@@ -23,14 +23,21 @@ func main(){
   data, _ := ioutil.ReadFile("client_secret.json")
   conf, _ := google.JWTConfigFromJSON(data, spreadsheet.SpreadsheetScope)
   client := conf.Client(oauth2.NoContext)
+
   service, _ := spreadsheet.New(client)
   sheets, _ := service.Sheets.Worksheets("1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4")
   ws, _ = sheets.Get(0)
   for _, row := range ws.Rows {
     for _, cell := range row {
-      fmt.Println(cell)
+      fmt.Println(cell.Content)
     }
   }
+
+  // Update cell content
+  ws.UpdateCell(ws.Rows[0][0], "hogehoge")
+
+  // Make sure call Synchronize to reflect the changes
+  ws.Synchronize()
 }
 ```
 
