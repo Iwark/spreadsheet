@@ -34,7 +34,7 @@ func main(){
   }
 
   // Update cell content
-  ws.UpdateCell(ws.Rows[0][0], "hogehoge")
+  ws.Rows[0][0].Update("hogehoge")
 
   // Make sure call Synchronize to reflect the changes
   ws.Synchronize()

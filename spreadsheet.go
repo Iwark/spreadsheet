@@ -84,7 +84,46 @@ type Worksheets struct {
 
 	XMLName xml.Name     `xml:"feed"`
 	Title   string       `xml:"title"`
+	Links   []Link       `xml:"link"`
 	Entries []*Worksheet `xml:"entry"`
+}
+
+// AddWorksheet adds worksheet
+func (ws *Worksheets) AddWorksheet(title string, rowCount, colCount int) error {
+
+	var url string
+	for _, l := range ws.Links {
+		if l.Rel == "http://schemas.google.com/g/2005#post" {
+			url = l.Href
+			break
+		}
+	}
+	if url == "" {
+		return errors.New("URL not found")
+	}
+
+	entry := `<entry xmlns="http://www.w3.org/2005/Atom" xmlns:gs="http://schemas.google.com/spreadsheets/2006">` +
+		"<title>" + title + "</title>" +
+		fmt.Sprintf("<gs:rowCount>%d</gs:rowCount>", rowCount) +
+		fmt.Sprintf("<gs:colCount>%d</gs:colCount>", colCount) +
+		`</entry>`
+
+	req, err := http.NewRequest("POST", url, strings.NewReader(entry))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/atom+xml;charset=utf-8")
+
+	resp, err := ws.ss.s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Get returns the worksheet of passed index
@@ -129,6 +168,16 @@ func (w *Worksheets) FindByTitle(title string) (*Worksheet, error) {
 	return nil, errors.New(fmt.Sprintf("worksheet of title %s was not found", title))
 }
 
+// ExistsTitled returns whether there is a sheet titlted given parameter
+func (w *Worksheets) ExistsTitled(title string) bool {
+	for _, e := range w.Entries {
+		if e.Title == title {
+			return true
+		}
+	}
+	return false
+}
+
 type Worksheet struct {
 	Id      string    `xml:"id"`
 	Updated time.Time `xml:"updated"`
@@ -138,6 +187,7 @@ type Worksheet struct {
 
 	ss            *SheetsService
 	CellsFeed     string
+	EditLink      string
 	MaxRowNum     int
 	MaxColNum     int
 	Rows          [][]*Cell
@@ -149,9 +199,12 @@ func (ws *Worksheet) Build(ss *SheetsService) error {
 	ws.ss = ss
 
 	for _, l := range ws.Links {
-		if l.Rel == "http://schemas.google.com/spreadsheets/2006#cellsfeed" {
+		switch l.Rel {
+		case "http://schemas.google.com/spreadsheets/2006#cellsfeed":
 			ws.CellsFeed = l.Href
-			break
+		case "edit":
+			ws.EditLink = l.Href
+		default:
 		}
 	}
 
@@ -163,6 +216,7 @@ func (ws *Worksheet) Build(ss *SheetsService) error {
 	ws.modifiedCells = make([]*Cell, 0)
 
 	for _, cell := range cells.Entries {
+		cell.ws = ws
 		if cell.Pos.Row > ws.MaxRowNum {
 			ws.MaxRowNum = cell.Pos.Row
 		}
@@ -182,14 +236,23 @@ func (ws *Worksheet) Build(ss *SheetsService) error {
 	return nil
 }
 
-func (ws *Worksheet) UpdateCell(cell *Cell, content string) {
-	cell.Content = content
-	for _, mc := range ws.modifiedCells {
-		if mc.Id == cell.Id {
-			return
-		}
+func (ws *Worksheet) Destroy() error {
+	req, err := http.NewRequest("DELETE", ws.EditLink, nil)
+	if err != nil {
+		return err
 	}
-	ws.modifiedCells = append(ws.modifiedCells, cell)
+
+	resp, err := ws.ss.s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Synchronize saves the modified cells
@@ -243,6 +306,7 @@ type Cells struct {
 }
 
 type Cell struct {
+	ws      *Worksheet
 	Id      string    `xml:"id"`
 	Updated time.Time `xml:"updated"`
 	Title   string    `xml:"title"`
@@ -252,6 +316,16 @@ type Cell struct {
 		Row int `xml:"row,attr"`
 		Col int `xml:"col,attr"`
 	} `xml:"cell"`
+}
+
+func (c *Cell) Update(content string) {
+	c.Content = content
+	for _, mc := range c.ws.modifiedCells {
+		if mc.Id == c.Id {
+			return
+		}
+	}
+	c.ws.modifiedCells = append(c.ws.modifiedCells, c)
 }
 
 func (c *Cell) EditLink() string {
