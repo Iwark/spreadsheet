@@ -119,10 +119,18 @@ func (ws *Worksheets) AddWorksheet(title string, rowCount, colCount int) error {
 		return err
 	}
 	defer resp.Body.Close()
-	_, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
+	added := &Worksheet{}
+	err = xml.Unmarshal(body, added)
+	if err != nil {
+		return err
+	}
+	ws.Entries = append(ws.Entries, added)
+
 	return nil
 }
 
