@@ -49,7 +49,6 @@ func TestAddAndDestroyWorksheet(t *testing.T) {
 	if err != nil {
 		t.Error("Failed to destroy test_adding_sheet. error:", err)
 	}
-	sheets, _ = service.Sheets.Worksheets(key)
 	if sheets.ExistsTitled(title) {
 		t.Error("Unexpectedly found the sheet which expected to be deleted")
 	}

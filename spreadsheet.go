@@ -140,7 +140,7 @@ func (w *Worksheets) Get(i int) (*Worksheet, error) {
 		return nil, errors.New(fmt.Sprintf("worksheet of index %d was not found", i))
 	}
 	ws := w.Entries[i]
-	err := ws.Build(w.ss)
+	err := ws.build(w)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (w *Worksheets) FindById(id string) (*Worksheet, error) {
 	var validID = regexp.MustCompile(fmt.Sprintf("%s$", id))
 	for _, e := range w.Entries {
 		if validID.MatchString(e.Id) {
-			err := e.Build(w.ss)
+			err := e.build(w)
 			if err != nil {
 				return nil, err
 			}
@@ -166,7 +166,7 @@ func (w *Worksheets) FindById(id string) (*Worksheet, error) {
 func (w *Worksheets) FindByTitle(title string) (*Worksheet, error) {
 	for _, e := range w.Entries {
 		if e.Title == title {
-			err := e.Build(w.ss)
+			err := e.build(w)
 			if err != nil {
 				return nil, err
 			}
@@ -193,7 +193,7 @@ type Worksheet struct {
 	Content string    `xml:"content"`
 	Links   []Link    `xml:"link"`
 
-	ss            *SheetsService
+	ws            *Worksheets
 	CellsFeed     string
 	EditLink      string
 	MaxRowNum     int
@@ -202,9 +202,9 @@ type Worksheet struct {
 	modifiedCells []*Cell
 }
 
-func (ws *Worksheet) Build(ss *SheetsService) error {
+func (ws *Worksheet) build(w *Worksheets) error {
 
-	ws.ss = ss
+	ws.ws = w
 
 	for _, l := range ws.Links {
 		switch l.Rel {
@@ -217,7 +217,7 @@ func (ws *Worksheet) Build(ss *SheetsService) error {
 	}
 
 	var cells *Cells
-	err := ws.ss.s.fetchAndUnmarshal(fmt.Sprintf("%s?return-empty=true", ws.CellsFeed), &cells)
+	err := ws.ws.ss.s.fetchAndUnmarshal(fmt.Sprintf("%s?return-empty=true", ws.CellsFeed), &cells)
 	if err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func (ws *Worksheet) Destroy() error {
 		return err
 	}
 
-	resp, err := ws.ss.s.client.Do(req)
+	resp, err := ws.ws.ss.s.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -258,6 +258,13 @@ func (ws *Worksheet) Destroy() error {
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	for i, e := range ws.ws.Entries {
+		if e.Id == ws.Id {
+			ws.ws.Entries = append(ws.ws.Entries[:i], ws.ws.Entries[i+1:]...)
+			break
+		}
 	}
 
 	return nil
@@ -288,7 +295,7 @@ func (ws *Worksheet) Synchronize() error {
 	}
 	req.Header.Add("Content-Type", "application/atom+xml;charset=utf-8")
 
-	resp, err := ws.ss.s.client.Do(req)
+	resp, err := ws.ws.ss.s.client.Do(req)
 	if err != nil {
 		return err
 	}
