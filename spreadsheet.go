@@ -15,15 +15,25 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
-const basePath = "https://spreadsheets.google.com"
+const (
+	basePath = "https://spreadsheets.google.com"
+	docBase  = "https://docs.google.com/spreadsheets"
+)
 
 const (
-	// View and manage your Google Spreadsheet data
+	// SpreadsheetScope is a scope of View and manage your Google Spreadsheet data
 	SpreadsheetScope = "https://spreadsheets.google.com/feeds"
 )
+
+// SyncCellsAtOnce is a length of cells to synchronize at once
+var SyncCellsAtOnce = 1000
+
+// MaxConnections is the number of max concurrent connections
+var MaxConnections = 150
 
 // New creates a Service object
 func New(client *http.Client) (*Service, error) {
@@ -196,10 +206,23 @@ type Worksheet struct {
 	ws            *Worksheets
 	CellsFeed     string
 	EditLink      string
+	CSVLink       string
 	MaxRowNum     int
 	MaxColNum     int
 	Rows          [][]*Cell
 	modifiedCells []*Cell
+}
+
+// DocsURL is a URL to the google docs spreadsheet (human readable)
+func (w *Worksheet) DocsURL() string {
+	r := regexp.MustCompile(`/d/(.*?)/export\?gid=(\d+)`)
+	group := r.FindSubmatch([]byte(w.CSVLink))
+	if len(group) < 3 {
+		return ""
+	}
+	key := string(group[1])
+	gid := string(group[2])
+	return fmt.Sprintf("%s/d/%s/edit#gid=%s", docBase, key, gid)
 }
 
 func (ws *Worksheet) build(w *Worksheets) error {
@@ -212,6 +235,8 @@ func (ws *Worksheet) build(w *Worksheets) error {
 			ws.CellsFeed = l.Href
 		case "edit":
 			ws.EditLink = l.Href
+		case "http://schemas.google.com/spreadsheets/2006#exportcsv":
+			ws.CSVLink = l.Href
 		default:
 		}
 	}
@@ -272,13 +297,47 @@ func (ws *Worksheet) Destroy() error {
 
 // Synchronize saves the modified cells
 func (ws *Worksheet) Synchronize() error {
+
+	var wg sync.WaitGroup
+	c := make(chan int, MaxConnections)
+	mCells := ws.modifiedCells
+	target := []*Cell{}
+	errors := []error{}
+	for len(mCells) > 0 {
+		wg.Add(1)
+		if len(mCells) >= SyncCellsAtOnce {
+			target = mCells[:SyncCellsAtOnce]
+			mCells = mCells[SyncCellsAtOnce:]
+		} else {
+			target = mCells[:len(mCells)]
+			mCells = []*Cell{}
+		}
+		go func(s chan int, cells []*Cell) {
+			defer wg.Done()
+			s <- 1
+			err := ws.synchronize(cells)
+			if err != nil {
+				errors = append(errors, err)
+			}
+			<-s
+		}(c, target)
+	}
+	wg.Wait()
+	close(c)
+	if len(errors) > 0 {
+		return errors[0]
+	}
+	return nil
+}
+
+func (ws *Worksheet) synchronize(cells []*Cell) error {
 	feed := `
     <feed xmlns="http://www.w3.org/2005/Atom"
       xmlns:batch="http://schemas.google.com/gdata/batch"
       xmlns:gs="http://schemas.google.com/spreadsheets/2006">
   `
 	feed += fmt.Sprintf("<id>%s</id>", ws.CellsFeed)
-	for _, mc := range ws.modifiedCells {
+	for _, mc := range cells {
 		feed += `<entry>`
 		feed += fmt.Sprintf("<batch:id>%d, %d</batch:id>", mc.Pos.Row, mc.Pos.Col)
 		feed += `<batch:operation type="update"/>`
@@ -340,6 +399,11 @@ func (c *Cell) Update(content string) {
 			return
 		}
 	}
+	c.ws.modifiedCells = append(c.ws.modifiedCells, c)
+}
+
+func (c *Cell) FastUpdate(content string) {
+	c.Content = content
 	c.ws.modifiedCells = append(c.ws.modifiedCells, c)
 }
 

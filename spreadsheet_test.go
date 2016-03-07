@@ -96,3 +96,13 @@ func TestUpdateCell(t *testing.T) {
 		t.Error("Failed to update cell")
 	}
 }
+
+func TestDocsURL(t *testing.T) {
+	s, err := sheets.FindById("od6")
+	if err != nil {
+		t.Error("Failed to find worksheet. error:", err)
+	}
+	if url := s.DocsURL(); url != "https://docs.google.com/spreadsheets/d/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/edit#gid=0" {
+		t.Error("Unexpected DocsURL. got:", url)
+	}
+}
