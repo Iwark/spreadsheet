@@ -33,7 +33,7 @@ const (
 var SyncCellsAtOnce = 1000
 
 // MaxConnections is the number of max concurrent connections
-var MaxConnections = 150
+var MaxConnections = 300
 
 // New creates a Service object
 func New(client *http.Client) (*Service, error) {
@@ -330,6 +330,13 @@ func (ws *Worksheet) Synchronize() error {
 	return nil
 }
 
+type GSCell struct {
+	XMLName    xml.Name `xml:"gs:cell"`
+	InputValue string   `xml:"inputValue,attr"`
+	Row        int      `xml:"row,attr"`
+	Col        int      `xml:"col,attr"`
+}
+
 func (ws *Worksheet) synchronize(cells []*Cell) error {
 	feed := `
     <feed xmlns="http://www.w3.org/2005/Atom"
@@ -343,7 +350,12 @@ func (ws *Worksheet) synchronize(cells []*Cell) error {
 		feed += `<batch:operation type="update"/>`
 		feed += fmt.Sprintf("<id>%s</id>", mc.Id)
 		feed += fmt.Sprintf("<link rel=\"edit\" type=\"application/atom+xml\" href=\"%s\"/>", mc.EditLink())
-		feed += fmt.Sprintf("<gs:cell row=\"%d\" col=\"%d\" inputValue=\"%s\"/>", mc.Pos.Row, mc.Pos.Col, mc.Content)
+		cell := GSCell{InputValue: mc.Content, Row: mc.Pos.Row, Col: mc.Pos.Col}
+		b, err := xml.Marshal(&cell)
+		if err != nil {
+			return err
+		}
+		feed += string(b)
 		feed += `</entry>`
 	}
 	feed += `</feed>`
