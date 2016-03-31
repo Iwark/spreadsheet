@@ -10,16 +10,16 @@ import (
 )
 
 var service *Service
-var sheets *Worksheets
+var sheets *Spreadsheet
 
 const key = "1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4"
 
 func TestMain(m *testing.M) {
 	data, _ := ioutil.ReadFile("client_secret.json")
-	conf, _ := google.JWTConfigFromJSON(data, SpreadsheetScope)
+	conf, _ := google.JWTConfigFromJSON(data, Scope)
 	client := conf.Client(oauth2.NoContext)
-	service, _ = New(client)
-	sheets, _ = service.Sheets.Worksheets(key)
+	service = &Service{Client: client}
+	sheets, _ = service.Get(key)
 	os.Exit(m.Run())
 }
 
@@ -33,11 +33,11 @@ func TestAddAndDestroyWorksheet(t *testing.T) {
 
 	title := "test_adding_sheet"
 
-	err := sheets.AddWorksheet(title, 5, 3)
+	_, err := sheets.NewWorksheet(title, 5, 3)
 	if err != nil {
 		t.Error("Failed to add worksheet. error:", err)
 	}
-	sheets, _ = service.Sheets.Worksheets(key)
+	sheets, _ = service.Get(key)
 	sheet, err := sheets.FindByTitle(title)
 	if err != nil {
 		t.Error("Failed to find test_adding_sheet. error:", err)
@@ -62,11 +62,11 @@ func TestGet(t *testing.T) {
 }
 
 func TestFindById(t *testing.T) {
-	_, err := sheets.FindById("od6")
+	_, err := sheets.FindByID("od6")
 	if err != nil {
 		t.Error("Failed to find worksheet. error:", err)
 	}
-	_, err = sheets.FindById("https://spreadsheets.google.com/feeds/worksheets/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/private/full/od6")
+	_, err = sheets.FindByID("https://spreadsheets.google.com/feeds/worksheets/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/private/full/od6")
 	if err != nil {
 		t.Error("Failed to find worksheet. error:", err)
 	}
@@ -83,14 +83,14 @@ func TestUpdateCell(t *testing.T) {
 	ws, _ := sheets.Get(0)
 	ws.Rows[0][1].Update("Updated")
 	ws.Synchronize()
-	newSheets, _ := service.Sheets.Worksheets(key)
+	newSheets, _ := service.Get(key)
 	ws, _ = newSheets.Get(0)
 	if ws.Rows[0][1].Content != "Updated" {
 		t.Error("Failed to update cell")
 	}
 	ws.Rows[0][1].Update("")
 	ws.Synchronize()
-	newSheets, _ = service.Sheets.Worksheets(key)
+	newSheets, _ = service.Get(key)
 	ws, _ = newSheets.Get(0)
 	if ws.Rows[0][1].Content != "" {
 		t.Error("Failed to update cell")
@@ -98,7 +98,7 @@ func TestUpdateCell(t *testing.T) {
 }
 
 func TestDocsURL(t *testing.T) {
-	s, err := sheets.FindById("od6")
+	s, err := sheets.FindByID("od6")
 	if err != nil {
 		t.Error("Failed to find worksheet. error:", err)
 	}
