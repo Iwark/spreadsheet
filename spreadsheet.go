@@ -202,9 +202,8 @@ func (ss *Spreadsheet) Get(i int) (*Worksheet, error) {
 
 // FindByID returns the worksheet of passed id.
 func (ss *Spreadsheet) FindByID(id string) (*Worksheet, error) {
-	s := "/" + id
 	for _, e := range ss.Worksheets {
-		if strings.HasSuffix(s, e.ID) {
+		if strings.HasSuffix(e.ID, id) {
 			if err := e.build(ss); err != nil {
 				return nil, err
 			}
@@ -285,7 +284,6 @@ func (ws *Worksheet) setLinks() {
 func (ws *Worksheet) build(ss *Spreadsheet) error {
 	ws.ss = ss
 	ws.setLinks()
-
 	var cells *Cells
 	err := ws.ss.s.fetchAndUnmarshal(fmt.Sprintf("%s?return-empty=%v", ws.CellsFeed, ws.ss.s.ReturnEmpty), &cells)
 	if err != nil {

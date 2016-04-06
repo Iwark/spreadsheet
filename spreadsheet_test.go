@@ -2,107 +2,101 @@ package spreadsheet
 
 import (
 	"io/ioutil"
-	"os"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
-var service *Service
-var sheets *Spreadsheet
-
 const key = "1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4"
 
-func TestMain(m *testing.M) {
+type SpreadsheetTestSuite struct {
+	suite.Suite
+	service *Service
+	sheets  *Spreadsheet
+}
+
+func (suite *SpreadsheetTestSuite) SetupTest() {
 	data, _ := ioutil.ReadFile("client_secret.json")
 	conf, _ := google.JWTConfigFromJSON(data, Scope)
 	client := conf.Client(oauth2.NoContext)
-	service = &Service{Client: client}
-	sheets, _ = service.Get(key)
-	os.Exit(m.Run())
+	suite.service = &Service{Client: client}
+	suite.sheets, _ = suite.service.Get(key)
 }
 
-func TestWorksheets(t *testing.T) {
-	if sheets.Title != "spreadsheet_example" {
-		t.Errorf("Failed to get spreadsheet. got: '%s'", sheets.Title)
-	}
+func (suite *SpreadsheetTestSuite) TestWorksheets() {
+	suite.Equal("spreadsheet_example", suite.sheets.Title)
 }
 
-func TestAddAndDestroyWorksheet(t *testing.T) {
+func (suite *SpreadsheetTestSuite) TestGet() {
+	ws, _ := suite.sheets.Get(0)
+	suite.Equal("TestSheet", ws.Title)
+}
 
+func (suite *SpreadsheetTestSuite) TestFindById() {
+	_, err := suite.sheets.FindByID("od6")
+	suite.Nil(err)
+	_, err = suite.sheets.FindByID("https://spreadsheets.google.com/feeds/worksheets/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/private/full/od6")
+	suite.Nil(err)
+}
+
+func (suite *SpreadsheetTestSuite) TestFindByTitle() {
+	_, err := suite.sheets.FindByTitle("TestSheet")
+	suite.Nil(err)
+}
+
+func (suite *SpreadsheetTestSuite) TestCells() {
+	ws, _ := suite.sheets.Get(0)
+	suite.Equal("test", ws.Rows[0][0].Content)
+}
+
+func (suite *SpreadsheetTestSuite) TestNewAndDestroyWorksheet() {
 	title := "test_adding_sheet"
+	_, err := suite.sheets.NewWorksheet(title, 5, 3)
+	suite.Nil(err)
 
-	_, err := sheets.NewWorksheet(title, 5, 3)
-	if err != nil {
-		t.Error("Failed to add worksheet. error:", err)
-	}
-	sheets, _ = service.Get(key)
-	sheet, err := sheets.FindByTitle(title)
-	if err != nil {
-		t.Error("Failed to find test_adding_sheet. error:", err)
-	}
-	if sheet.Title != title {
-		t.Errorf("Failed to get exact title of test_adding_sheet. got: '%s'", sheet.Title)
-	}
-	err = sheet.Destroy()
-	if err != nil {
-		t.Error("Failed to destroy test_adding_sheet. error:", err)
-	}
-	if sheets.ExistsTitled(title) {
-		t.Error("Unexpectedly found the sheet which expected to be deleted")
-	}
+	suite.sheets, _ = suite.service.Get(key)
+	ws, err := suite.sheets.FindByTitle(title)
+	suite.Nil(err)
+	suite.Equal(title, ws.Title)
+
+	err = ws.Destroy()
+	suite.Nil(err)
+	suite.False(suite.sheets.ExistsTitled(title))
 }
 
-func TestGet(t *testing.T) {
-	ws, _ := sheets.Get(0)
-	if ws.Title != "TestSheet" {
-		t.Errorf("Failed to get worksheet. got: '%s'", ws.Title)
-	}
+func (suite *SpreadsheetTestSuite) TestDocsURL() {
+	ws, err := suite.sheets.FindByID("od6")
+	suite.Nil(err)
+
+	expectedURL := "https://docs.google.com/spreadsheets/d/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/edit#gid=0"
+	url := ws.DocsURL()
+	suite.Equal(expectedURL, url)
 }
 
-func TestFindById(t *testing.T) {
-	_, err := sheets.FindByID("od6")
-	if err != nil {
-		t.Error("Failed to find worksheet. error:", err)
-	}
-	_, err = sheets.FindByID("https://spreadsheets.google.com/feeds/worksheets/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/private/full/od6")
-	if err != nil {
-		t.Error("Failed to find worksheet. error:", err)
-	}
-}
-
-func TestCells(t *testing.T) {
-	ws, _ := sheets.Get(0)
-	if ws.Rows[0][0].Content != "test" {
-		t.Errorf("Failed to get cell. got: '%s'", ws.Rows[0][0].Content)
-	}
-}
-
-func TestUpdateCell(t *testing.T) {
-	ws, _ := sheets.Get(0)
+func (suite *SpreadsheetTestSuite) TestUpdateCell() {
+	suite.service.ReturnEmpty = true
+	defer func() {
+		suite.service.ReturnEmpty = false
+	}()
+	ws, err := suite.sheets.FindByID("od6")
+	suite.Nil(err)
 	ws.Rows[0][1].Update("Updated")
 	ws.Synchronize()
-	newSheets, _ := service.Get(key)
-	ws, _ = newSheets.Get(0)
-	if ws.Rows[0][1].Content != "Updated" {
-		t.Error("Failed to update cell")
-	}
+
+	suite.sheets, _ = suite.service.Get(key)
+	ws, _ = suite.sheets.Get(0)
+	suite.Equal("Updated", ws.Rows[0][1].Content)
 	ws.Rows[0][1].Update("")
 	ws.Synchronize()
-	newSheets, _ = service.Get(key)
-	ws, _ = newSheets.Get(0)
-	if ws.Rows[0][1].Content != "" {
-		t.Error("Failed to update cell")
-	}
+
+	suite.sheets, _ = suite.service.Get(key)
+	ws, _ = suite.sheets.Get(0)
+	suite.Equal("", ws.Rows[0][1].Content)
 }
 
-func TestDocsURL(t *testing.T) {
-	s, err := sheets.FindByID("od6")
-	if err != nil {
-		t.Error("Failed to find worksheet. error:", err)
-	}
-	if url := s.DocsURL(); url != "https://docs.google.com/spreadsheets/d/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/edit#gid=0" {
-		t.Error("Unexpected DocsURL. got:", url)
-	}
+func TestSpreadsheetTestSuite(t *testing.T) {
+	suite.Run(t, new(SpreadsheetTestSuite))
 }
