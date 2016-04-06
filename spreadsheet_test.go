@@ -19,11 +19,17 @@ type SpreadsheetTestSuite struct {
 }
 
 func (suite *SpreadsheetTestSuite) SetupTest() {
-	data, _ := ioutil.ReadFile("client_secret.json")
-	conf, _ := google.JWTConfigFromJSON(data, Scope)
+	data, err := ioutil.ReadFile("client_secret.json")
+	suite.Require().NoError(err)
+
+	conf, err := google.JWTConfigFromJSON(data, Scope)
+	suite.Require().NoError(err)
+
 	client := conf.Client(oauth2.NoContext)
 	suite.service = &Service{Client: client}
-	suite.sheets, _ = suite.service.Get(key)
+
+	suite.sheets, err = suite.service.Get(key)
+	suite.Require().NoError(err)
 }
 
 func (suite *SpreadsheetTestSuite) TestWorksheets() {
@@ -31,45 +37,49 @@ func (suite *SpreadsheetTestSuite) TestWorksheets() {
 }
 
 func (suite *SpreadsheetTestSuite) TestGet() {
-	ws, _ := suite.sheets.Get(0)
+	ws, err := suite.sheets.Get(0)
+	suite.Require().NoError(err)
 	suite.Equal("TestSheet", ws.Title)
 }
 
 func (suite *SpreadsheetTestSuite) TestFindById() {
 	_, err := suite.sheets.FindByID("od6")
-	suite.Nil(err)
+	suite.NoError(err)
 	_, err = suite.sheets.FindByID("https://spreadsheets.google.com/feeds/worksheets/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/private/full/od6")
-	suite.Nil(err)
+	suite.NoError(err)
 }
 
 func (suite *SpreadsheetTestSuite) TestFindByTitle() {
 	_, err := suite.sheets.FindByTitle("TestSheet")
-	suite.Nil(err)
+	suite.NoError(err)
 }
 
 func (suite *SpreadsheetTestSuite) TestCells() {
-	ws, _ := suite.sheets.Get(0)
+	ws, err := suite.sheets.Get(0)
+	suite.Require().NoError(err)
 	suite.Equal("test", ws.Rows[0][0].Content)
 }
 
 func (suite *SpreadsheetTestSuite) TestNewAndDestroyWorksheet() {
 	title := "test_adding_sheet"
 	_, err := suite.sheets.NewWorksheet(title, 5, 3)
-	suite.Nil(err)
+	suite.NoError(err)
 
-	suite.sheets, _ = suite.service.Get(key)
+	suite.sheets, err = suite.service.Get(key)
+	suite.Require().NoError(err)
+
 	ws, err := suite.sheets.FindByTitle(title)
-	suite.Nil(err)
+	suite.Require().NoError(err)
 	suite.Equal(title, ws.Title)
 
 	err = ws.Destroy()
-	suite.Nil(err)
+	suite.NoError(err)
 	suite.False(suite.sheets.ExistsTitled(title))
 }
 
 func (suite *SpreadsheetTestSuite) TestDocsURL() {
 	ws, err := suite.sheets.FindByID("od6")
-	suite.Nil(err)
+	suite.Require().NoError(err)
 
 	expectedURL := "https://docs.google.com/spreadsheets/d/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/edit#gid=0"
 	url := ws.DocsURL()
@@ -82,18 +92,25 @@ func (suite *SpreadsheetTestSuite) TestUpdateCell() {
 		suite.service.ReturnEmpty = false
 	}()
 	ws, err := suite.sheets.FindByID("od6")
-	suite.Nil(err)
+	suite.Require().NoError(err)
 	ws.Rows[0][1].Update("Updated")
 	ws.Synchronize()
 
-	suite.sheets, _ = suite.service.Get(key)
-	ws, _ = suite.sheets.Get(0)
+	suite.sheets, err = suite.service.Get(key)
+	suite.Require().NoError(err)
+
+	ws, err = suite.sheets.Get(0)
+	suite.Require().NoError(err)
 	suite.Equal("Updated", ws.Rows[0][1].Content)
+
 	ws.Rows[0][1].Update("")
 	ws.Synchronize()
 
-	suite.sheets, _ = suite.service.Get(key)
-	ws, _ = suite.sheets.Get(0)
+	suite.sheets, err = suite.service.Get(key)
+	suite.Require().NoError(err)
+
+	ws, err = suite.sheets.Get(0)
+	suite.Require().NoError(err)
 	suite.Equal("", ws.Rows[0][1].Content)
 }
 
