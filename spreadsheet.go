@@ -1,10 +1,11 @@
-// Package spreadsheet provides access to the Google Spreadsheet.
+// Package spreadsheet provides access to the Google Sheets API for reading
+// and updating spreadsheets.
 //
 // Usage example:
 //
 //   import "github.com/Iwark/spreadsheet"
 //   ...
-//   service, err := spreadsheet.New(oauthHttpClient)
+//   service := &spreadsheet.Spreadsheet{Client: oauthHTTPClient}
 package spreadsheet // import "github.com/Iwark/spreadsheet"
 
 import (
@@ -20,96 +21,138 @@ import (
 )
 
 const (
-	basePath = "https://spreadsheets.google.com"
-	docBase  = "https://docs.google.com/spreadsheets"
+	baseURL = "https://spreadsheets.google.com"
+	docBase = "https://docs.google.com/spreadsheets"
+
+	// Scope is the API scope for viewing and managing your Google Spreadsheet data.
+	// Useful for generating JWT values.
+	Scope = "https://spreadsheets.google.com/feeds"
+
+	// dfltSync is the default number of cells to synchronize at once.
+	dfltMaxSync = 1000
+
+	// dfltMaxConns is the default number of max concurrent connections.
+	dfltMaxConns = 300
 )
+
+// VisibilityState represents a visibility state for a spreadsheet.
+type VisibilityState int
 
 const (
-	// SpreadsheetScope is a scope of View and manage your Google Spreadsheet data
-	SpreadsheetScope = "https://spreadsheets.google.com/feeds"
+	// PrivateVisibility represents a private visibility state for a spreadsheet.  Private
+	// spreadsheets require authentication.
+	PrivateVisibility VisibilityState = iota
+
+	// PublicVisibility represents a public visibility state for a spreadsheet.  Public
+	// spreadsheets can be viewed without authentication.
+	PublicVisibility
 )
 
-// SyncCellsAtOnce is a length of cells to synchronize at once
-var SyncCellsAtOnce = 1000
+var visibilityName = map[VisibilityState]string{
+	PrivateVisibility: "private",
+	PublicVisibility:  "public",
+}
 
-// MaxConnections is the number of max concurrent connections
-var MaxConnections = 300
+func (v VisibilityState) String() string {
+	return visibilityName[v]
+}
 
-// New creates a Service object
-func New(client *http.Client) (*Service, error) {
-	if client == nil {
+// Service represents a Sheets API service instance.  Service is the main entry
+// point into using this package.
+type Service struct {
+	// BaseURL is the base URL used for making API requests.
+	// Default is "https://spreadsheets.google.com".
+	BaseURL string
+
+	Client *http.Client
+
+	// Maximum number of concurrent connections.
+	// Default is 300.
+	MaxConns int
+
+	// Maximum number of cells to synchronize at once.
+	// Default is 1000.
+	MaxSync int
+
+	// private or public.  Default is private.
+	Visibility VisibilityState
+
+	// Return all empty cells.
+	ReturnEmpty bool
+}
+
+// Get returns a spreadsheet with the given ID.
+func (s *Service) Get(ID string) (*Spreadsheet, error) {
+	if s == nil {
+		return nil, errors.New("spreadsheet is nil")
+	}
+
+	if s.Client == nil {
 		return nil, errors.New("client is nil")
 	}
-	s := &Service{client: client, BasePath: basePath}
-	s.Sheets = NewSheetsService(s)
-	return s, nil
-}
 
-type Service struct {
-	client   *http.Client
-	BasePath string
-
-	Sheets *SheetsService
-}
-
-func (s *Service) fetchAndUnmarshal(url string, v interface{}) error {
-	resp, err := s.client.Get(url)
-	if err != nil {
-		return err
+	if s.BaseURL == "" {
+		s.BaseURL = baseURL
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return err
+
+	if s.MaxSync == 0 {
+		s.MaxSync = dfltMaxSync
 	}
-	err = xml.Unmarshal(body, v)
-	if err != nil {
-		return err
+
+	if s.MaxConns == 0 {
+		s.MaxConns = dfltMaxConns
 	}
-	return nil
-}
 
-func NewSheetsService(s *Service) *SheetsService {
-	ss := &SheetsService{s: s}
-	return ss
-}
-
-type SheetsService struct {
-	s *Service
-}
-
-// Worksheets returns the Worksheets object of the client
-func (ss *SheetsService) Worksheets(key string) (*Worksheets, error) {
-	url := fmt.Sprintf("%s/feeds/worksheets/%s/private/full", ss.s.BasePath, key)
-	worksheets := &Worksheets{ss: ss}
-	err := ss.s.fetchAndUnmarshal(url, &worksheets)
+	url := fmt.Sprintf("%s/feeds/worksheets/%s/%s/full", s.BaseURL, ID, s.Visibility)
+	worksheets := &Spreadsheet{s: s}
+	err := s.fetchAndUnmarshal(url, &worksheets)
 	if err != nil {
 		return nil, err
 	}
 	return worksheets, nil
 }
 
-type Worksheets struct {
-	ss *SheetsService
+func (s *Service) fetchAndUnmarshal(url string, v interface{}) error {
+	resp, err := s.Client.Get(url)
+	if err != nil {
+		return err
+	}
 
-	XMLName xml.Name     `xml:"feed"`
-	Title   string       `xml:"title"`
-	Links   []Link       `xml:"link"`
-	Entries []*Worksheet `xml:"entry"`
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	err = xml.Unmarshal(body, v)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// AddWorksheet adds worksheet
-func (ws *Worksheets) AddWorksheet(title string, rowCount, colCount int) error {
+// Spreadsheet represents a spreadsheet.  Spreadsheets contain worksheets.
+type Spreadsheet struct {
+	s *Service
 
+	XMLName    xml.Name     `xml:"feed"`
+	Title      string       `xml:"title"`
+	Links      []Link       `xml:"link"`
+	Worksheets []*Worksheet `xml:"entry"`
+}
+
+// NewWorksheet adds a new worksheet.
+func (ss *Spreadsheet) NewWorksheet(title string, rowCount, colCount int) (*Worksheet, error) {
 	var url string
-	for _, l := range ws.Links {
+	for _, l := range ss.Links {
 		if l.Rel == "http://schemas.google.com/g/2005#post" {
 			url = l.Href
 			break
 		}
 	}
 	if url == "" {
-		return errors.New("URL not found")
+		return nil, errors.New("URL not found")
 	}
 
 	entry := `<entry xmlns="http://www.w3.org/2005/Atom" xmlns:gs="http://schemas.google.com/spreadsheets/2006">` +
@@ -120,75 +163,74 @@ func (ws *Worksheets) AddWorksheet(title string, rowCount, colCount int) error {
 
 	req, err := http.NewRequest("POST", url, strings.NewReader(entry))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/atom+xml;charset=utf-8")
 
-	resp, err := ws.ss.s.client.Do(req)
+	resp, err := ss.s.Client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	added := &Worksheet{}
 	err = xml.Unmarshal(body, added)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	ws.Entries = append(ws.Entries, added)
+	ss.Worksheets = append(ss.Worksheets, added)
 
-	return nil
+	return added, nil
 }
 
-// Get returns the worksheet of passed index
-func (w *Worksheets) Get(i int) (*Worksheet, error) {
-	if len(w.Entries) <= i {
-		return nil, errors.New(fmt.Sprintf("worksheet of index %d was not found", i))
+// Get returns the worksheet at a given index.
+func (ss *Spreadsheet) Get(i int) (*Worksheet, error) {
+	if i > len(ss.Worksheets)-1 {
+		return nil, fmt.Errorf("worksheet of index %d was not found", i)
 	}
-	ws := w.Entries[i]
-	err := ws.build(w)
-	if err != nil {
+
+	ws := ss.Worksheets[i]
+	if err := ws.build(ss); err != nil {
 		return nil, err
 	}
 	return ws, nil
 }
 
-// FindById returns the worksheet of passed id
-func (w *Worksheets) FindById(id string) (*Worksheet, error) {
-	var validID = regexp.MustCompile(fmt.Sprintf("%s$", id))
-	for _, e := range w.Entries {
-		if validID.MatchString(e.Id) {
-			err := e.build(w)
-			if err != nil {
+// FindByID returns the worksheet of passed id.
+func (ss *Spreadsheet) FindByID(id string) (*Worksheet, error) {
+	s := "/" + id
+	for _, e := range ss.Worksheets {
+		if strings.HasSuffix(s, e.ID) {
+			if err := e.build(ss); err != nil {
 				return nil, err
 			}
 			return e, nil
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("worksheet of id %s was not found", id))
+	return nil, fmt.Errorf("worksheet of id %q was not found", id)
 }
 
-// FindByTitle returns the worksheet of passed title
-func (w *Worksheets) FindByTitle(title string) (*Worksheet, error) {
-	for _, e := range w.Entries {
+// FindByTitle returns the worksheet of passed title.
+func (ss *Spreadsheet) FindByTitle(title string) (*Worksheet, error) {
+	for _, e := range ss.Worksheets {
 		if e.Title == title {
-			err := e.build(w)
+			err := e.build(ss)
 			if err != nil {
 				return nil, err
 			}
 			return e, nil
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("worksheet of title %s was not found", title))
+	return nil, fmt.Errorf("worksheet of title %s was not found", title)
 }
 
 // ExistsTitled returns whether there is a sheet titlted given parameter
-func (w *Worksheets) ExistsTitled(title string) bool {
-	for _, e := range w.Entries {
+func (ss *Spreadsheet) ExistsTitled(title string) bool {
+	for _, e := range ss.Worksheets {
 		if e.Title == title {
 			return true
 		}
@@ -196,14 +238,15 @@ func (w *Worksheets) ExistsTitled(title string) bool {
 	return false
 }
 
+// A Worksheet represents a worksheet inside a spreadsheet.
 type Worksheet struct {
-	Id      string    `xml:"id"`
+	ID      string    `xml:"id"`
 	Updated time.Time `xml:"updated"`
 	Title   string    `xml:"title"`
 	Content string    `xml:"content"`
 	Links   []Link    `xml:"link"`
 
-	ws            *Worksheets
+	ss            *Spreadsheet
 	CellsFeed     string
 	EditLink      string
 	CSVLink       string
@@ -214,9 +257,9 @@ type Worksheet struct {
 }
 
 // DocsURL is a URL to the google docs spreadsheet (human readable)
-func (w *Worksheet) DocsURL() string {
+func (ws *Worksheet) DocsURL() string {
 	r := regexp.MustCompile(`/d/(.*?)/export\?gid=(\d+)`)
-	group := r.FindSubmatch([]byte(w.CSVLink))
+	group := r.FindSubmatch([]byte(ws.CSVLink))
 	if len(group) < 3 {
 		return ""
 	}
@@ -225,10 +268,7 @@ func (w *Worksheet) DocsURL() string {
 	return fmt.Sprintf("%s/d/%s/edit#gid=%s", docBase, key, gid)
 }
 
-func (ws *Worksheet) build(w *Worksheets) error {
-
-	ws.ws = w
-
+func (ws *Worksheet) setLinks() {
 	for _, l := range ws.Links {
 		switch l.Rel {
 		case "http://schemas.google.com/spreadsheets/2006#cellsfeed":
@@ -240,9 +280,14 @@ func (ws *Worksheet) build(w *Worksheets) error {
 		default:
 		}
 	}
+}
+
+func (ws *Worksheet) build(ss *Spreadsheet) error {
+	ws.ss = ss
+	ws.setLinks()
 
 	var cells *Cells
-	err := ws.ws.ss.s.fetchAndUnmarshal(fmt.Sprintf("%s?return-empty=true", ws.CellsFeed), &cells)
+	err := ws.ss.s.fetchAndUnmarshal(fmt.Sprintf("%s?return-empty=%v", ws.CellsFeed, ws.ss.s.ReturnEmpty), &cells)
 	if err != nil {
 		return err
 	}
@@ -269,13 +314,14 @@ func (ws *Worksheet) build(w *Worksheets) error {
 	return nil
 }
 
+// Destroy deletes a worksheet.
 func (ws *Worksheet) Destroy() error {
 	req, err := http.NewRequest("DELETE", ws.EditLink, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := ws.ws.ss.s.client.Do(req)
+	resp, err := ws.ss.s.Client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -285,9 +331,9 @@ func (ws *Worksheet) Destroy() error {
 		return err
 	}
 
-	for i, e := range ws.ws.Entries {
-		if e.Id == ws.Id {
-			ws.ws.Entries = append(ws.ws.Entries[:i], ws.ws.Entries[i+1:]...)
+	for i, e := range ws.ss.Worksheets {
+		if e.ID == ws.ID {
+			ws.ss.Worksheets = append(ws.ss.Worksheets[:i], ws.ss.Worksheets[i+1:]...)
 			break
 		}
 	}
@@ -295,19 +341,19 @@ func (ws *Worksheet) Destroy() error {
 	return nil
 }
 
-// Synchronize saves the modified cells
+// Synchronize saves the modified cells.
 func (ws *Worksheet) Synchronize() error {
 
 	var wg sync.WaitGroup
-	c := make(chan int, MaxConnections)
+	c := make(chan int, ws.ss.s.MaxConns)
 	mCells := ws.modifiedCells
 	target := []*Cell{}
 	errors := []error{}
 	for len(mCells) > 0 {
 		wg.Add(1)
-		if len(mCells) >= SyncCellsAtOnce {
-			target = mCells[:SyncCellsAtOnce]
-			mCells = mCells[SyncCellsAtOnce:]
+		if len(mCells) >= ws.ss.s.MaxSync {
+			target = mCells[:ws.ss.s.MaxSync]
+			mCells = mCells[ws.ss.s.MaxSync:]
 		} else {
 			target = mCells[:len(mCells)]
 			mCells = []*Cell{}
@@ -330,7 +376,7 @@ func (ws *Worksheet) Synchronize() error {
 	return nil
 }
 
-type GSCell struct {
+type gsCell struct {
 	XMLName    xml.Name `xml:"gs:cell"`
 	InputValue string   `xml:"inputValue,attr"`
 	Row        int      `xml:"row,attr"`
@@ -348,9 +394,9 @@ func (ws *Worksheet) synchronize(cells []*Cell) error {
 		feed += `<entry>`
 		feed += fmt.Sprintf("<batch:id>%d, %d</batch:id>", mc.Pos.Row, mc.Pos.Col)
 		feed += `<batch:operation type="update"/>`
-		feed += fmt.Sprintf("<id>%s</id>", mc.Id)
+		feed += fmt.Sprintf("<id>%s</id>", mc.ID)
 		feed += fmt.Sprintf("<link rel=\"edit\" type=\"application/atom+xml\" href=\"%s\"/>", mc.EditLink())
-		cell := GSCell{InputValue: mc.Content, Row: mc.Pos.Row, Col: mc.Pos.Col}
+		cell := gsCell{InputValue: mc.Content, Row: mc.Pos.Row, Col: mc.Pos.Col}
 		b, err := xml.Marshal(&cell)
 		if err != nil {
 			return err
@@ -366,7 +412,7 @@ func (ws *Worksheet) synchronize(cells []*Cell) error {
 	}
 	req.Header.Add("Content-Type", "application/atom+xml;charset=utf-8")
 
-	resp, err := ws.ws.ss.s.client.Do(req)
+	resp, err := ws.ss.s.Client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -379,21 +425,24 @@ func (ws *Worksheet) synchronize(cells []*Cell) error {
 	return nil
 }
 
+// Link represents a URL link element within the Sheets API.
 type Link struct {
 	Rel  string `xml:"rel,attr"`
 	Type string `xml:"type,attr"`
 	Href string `xml:"href,attr"`
 }
 
+// Cells represents a group of cells.
 type Cells struct {
 	XMLName xml.Name `xml:"feed"`
 	Title   string   `xml:"title"`
 	Entries []*Cell  `xml:"entry"`
 }
 
+// A Cell represents an individual cell in a worksheet.
 type Cell struct {
 	ws      *Worksheet
-	Id      string    `xml:"id"`
+	ID      string    `xml:"id"`
 	Updated time.Time `xml:"updated"`
 	Title   string    `xml:"title"`
 	Content string    `xml:"content"`
@@ -404,21 +453,25 @@ type Cell struct {
 	} `xml:"cell"`
 }
 
+// Update will update the content of the cell.
 func (c *Cell) Update(content string) {
 	c.Content = content
 	for _, mc := range c.ws.modifiedCells {
-		if mc.Id == c.Id {
+		if mc.ID == c.ID {
 			return
 		}
 	}
 	c.ws.modifiedCells = append(c.ws.modifiedCells, c)
 }
 
+// FastUpdate updates the content of the cell and appends the cell to the list
+// of modified cells.
 func (c *Cell) FastUpdate(content string) {
 	c.Content = content
 	c.ws.modifiedCells = append(c.ws.modifiedCells, c)
 }
 
+// EditLink returns the edit link for the cell.
 func (c *Cell) EditLink() string {
 	for _, l := range c.Links {
 		if l.Rel == "edit" {
