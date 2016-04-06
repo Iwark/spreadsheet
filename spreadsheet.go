@@ -353,7 +353,7 @@ func (ws *Worksheet) Synchronize() error {
 			target = mCells[:ws.ss.s.MaxSync]
 			mCells = mCells[ws.ss.s.MaxSync:]
 		} else {
-			target = mCells[:len(mCells)]
+			target = mCells[:]
 			mCells = []*Cell{}
 		}
 		go func(s chan int, cells []*Cell) {
