@@ -115,7 +115,7 @@ func (suite *SpreadsheetTestSuite) TestUpdateCell() {
 }
 
 func (suite *SpreadsheetTestSuite) TestNilService() {
-	var s Service
+	var s *Service
 	ss, err := s.Get("foo")
 	suite.Error(err)
 	suite.Nil(ss)
