@@ -114,6 +114,20 @@ func (suite *SpreadsheetTestSuite) TestUpdateCell() {
 	suite.Equal("", ws.Rows[0][1].Content)
 }
 
+func (suite *SpreadsheetTestSuite) TestNilService() {
+	var s Service
+	ss, err := s.Get("foo")
+	suite.Error(err)
+	suite.Nil(ss)
+}
+
+func (suite *SpreadsheetTestSuite) TestNilClient() {
+	s := &Service{}
+	ss, err := s.Get("foo")
+	suite.Error(err)
+	suite.Nil(ss)
+}
+
 func TestSpreadsheetTestSuite(t *testing.T) {
 	suite.Run(t, new(SpreadsheetTestSuite))
 }
