@@ -1,7 +1,7 @@
 spreadsheet
 ===
 [![Build Status](https://travis-ci.org/Iwark/spreadsheet.svg?branch=master)](https://travis-ci.org/Iwark/spreadsheet)
-[![GoCover](https://gocover.io/_badge/github.com/Iwark/spreadsheet)](http://gocover.io/github.com/Iwark/spreadsheet)
+[![Coverage Status](https://coveralls.io/repos/github/Iwark/spreadsheet/badge.svg?branch=master)](https://coveralls.io/github/Iwark/spreadsheet?branch=master)
 [![GoReport](https://goreportcard.com/badge/Iwark/spreadsheet)](http://goreportcard.com/report/Iwark/spreadsheet)
 [![GoDoc](https://godoc.org/github.com/Iwark/spreadsheet?status.svg)](https://godoc.org/github.com/Iwark/spreadsheet)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

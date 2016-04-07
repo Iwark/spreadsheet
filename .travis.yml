@@ -9,5 +9,7 @@ matrix:
   allow_failures:
   - go: tip
 before_install:
+- go get github.com/mattn/goveralls
+- go get golang.org/x/tools/cmd/cover
 - openssl aes-256-cbc -K $encrypted_b096a1fd8e8f_key -iv $encrypted_b096a1fd8e8f_iv
   -in client_secret.json.enc -out client_secret.json -d
