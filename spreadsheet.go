@@ -138,7 +138,7 @@ type Spreadsheet struct {
 
 	XMLName    xml.Name     `xml:"feed"`
 	Title      string       `xml:"title"`
-	Links      []Link       `xml:"link"`
+	Links      []link       `xml:"link"`
 	Worksheets []*Worksheet `xml:"entry"`
 }
 
@@ -243,7 +243,7 @@ type Worksheet struct {
 	Updated time.Time `xml:"updated"`
 	Title   string    `xml:"title"`
 	Content string    `xml:"content"`
-	Links   []Link    `xml:"link"`
+	Links   []link    `xml:"link"`
 
 	ss            *Spreadsheet
 	CellsFeed     string
@@ -393,7 +393,7 @@ func (ws *Worksheet) synchronize(cells []*Cell) error {
 		feed += fmt.Sprintf("<batch:id>%d, %d</batch:id>", mc.Pos.Row, mc.Pos.Col)
 		feed += `<batch:operation type="update"/>`
 		feed += fmt.Sprintf("<id>%s</id>", mc.ID)
-		feed += fmt.Sprintf("<link rel=\"edit\" type=\"application/atom+xml\" href=\"%s\"/>", mc.EditLink())
+		feed += fmt.Sprintf("<link rel=\"edit\" type=\"application/atom+xml\" href=\"%s\"/>", mc.editLink())
 		cell := gsCell{InputValue: mc.Content, Row: mc.Pos.Row, Col: mc.Pos.Col}
 		b, err := xml.Marshal(&cell)
 		if err != nil {
@@ -423,8 +423,8 @@ func (ws *Worksheet) synchronize(cells []*Cell) error {
 	return nil
 }
 
-// Link represents a URL link element within the Sheets API.
-type Link struct {
+// link represents a URL link element within the Sheets API.
+type link struct {
 	Rel  string `xml:"rel,attr"`
 	Type string `xml:"type,attr"`
 	Href string `xml:"href,attr"`
@@ -444,7 +444,7 @@ type Cell struct {
 	Updated time.Time `xml:"updated"`
 	Title   string    `xml:"title"`
 	Content string    `xml:"content"`
-	Links   []Link    `xml:"link"`
+	Links   []link    `xml:"link"`
 	Pos     struct {
 		Row int `xml:"row,attr"`
 		Col int `xml:"col,attr"`
@@ -469,8 +469,8 @@ func (c *Cell) FastUpdate(content string) {
 	c.ws.modifiedCells = append(c.ws.modifiedCells, c)
 }
 
-// EditLink returns the edit link for the cell.
-func (c *Cell) EditLink() string {
+// editLink returns the edit link for the cell.
+func (c *Cell) editLink() string {
 	for _, l := range c.Links {
 		if l.Rel == "edit" {
 			return l.Href
