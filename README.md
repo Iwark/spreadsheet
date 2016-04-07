@@ -27,12 +27,12 @@ import (
 
 func main() {
 	data, _ := ioutil.ReadFile("client_secret.json")
-	conf, _ := google.JWTConfigFromJSON(data, spreadsheet.SpreadsheetScope)
+	conf, _ := google.JWTConfigFromJSON(data, spreadsheet.Scope)
 	client := conf.Client(context.TODO())
 
 	service := &spreadsheet.Service{Client: client}
 	sheets, _ := service.Get("1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4")
-	ws, _ = sheets.Get(0)
+	ws, _ := sheets.Get(0)
 	for _, row := range ws.Rows {
 		for _, cell := range row {
 			fmt.Println(cell.Content)
