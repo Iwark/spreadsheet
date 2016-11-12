@@ -7,9 +7,15 @@ spreadsheet
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Project Status](https://img.shields.io/badge/status-beta-yellow.svg)
 
-Package `spreadsheet` provides access to the Google Sheets API for reading and updating spreadsheets.
+Package `spreadsheet` provides fast and easy-to-use access to the Google Sheets API for reading and updating spreadsheets.
 
 Any pull-request is welcome.
+
+## Installation
+
+```
+go get gopkg.in/Iwark/spreadsheet.v2
+```
 
 ## Example
 
@@ -20,30 +26,41 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/Iwark/spreadsheet"
+	"gopkg.in/Iwark/spreadsheet.v2"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 )
 
 func main() {
-	data, _ := ioutil.ReadFile("client_secret.json")
-	conf, _ := google.JWTConfigFromJSON(data, spreadsheet.Scope)
+	data, err := ioutil.ReadFile("client_secret.json")
+	checkError(err)
+	conf, err := google.JWTConfigFromJSON(data, spreadsheet.Scope)
+	checkError(err)
 	client := conf.Client(context.TODO())
 
-	service := &spreadsheet.Service{Client: client}
-	sheets, _ := service.Get("1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4")
-	ws, _ := sheets.Get(0)
-	for _, row := range ws.Rows {
+	service := spreadsheet.NewServiceWithClient(client)
+	spreadsheet, err := service.FetchSpreadsheet("1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4")
+	checkError(err)
+	sheet, err := spreadsheet.SheetByIndex(0)
+	checkError(err)
+	for _, row := range sheet.Rows {
 		for _, cell := range row {
-			fmt.Println(cell.Content)
+			fmt.Println(cell.Value)
 		}
 	}
 
 	// Update cell content
-	ws.Rows[0][0].Update("hogehoge")
+	sheet.Update(0, 0, "hogehoge")
 
 	// Make sure call Synchronize to reflect the changes
-	ws.Synchronize()
+	err = sheet.Synchronize()
+	checkError(err)
+}
+
+func checkError(err error) {
+	if err != nil {
+		panic(err.Error())
+	}
 }
 ```
 
