@@ -52,14 +52,8 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 			}
 		}
 	}
-	sheet.Rows = make([][]Cell, maxRow+1)
-	for i := range sheet.Rows {
-		sheet.Rows[i] = make([]Cell, maxColumn+1)
-	}
-	sheet.Columns = make([][]Cell, maxColumn+1)
-	for i := range sheet.Columns {
-		sheet.Columns[i] = make([]Cell, maxRow+1)
-	}
+	sheet.Rows, sheet.Columns = newCells(uint(maxRow), uint(maxColumn))
+
 	for _, cell := range cells {
 		sheet.Rows[cell.Row][cell.Column] = cell
 		sheet.Columns[cell.Column][cell.Row] = cell
@@ -80,21 +74,46 @@ func (sheet *Sheet) Update(row, column int, val string) {
 	if uint(column)+1 > sheet.newMaxColumn {
 		sheet.newMaxColumn = uint(column) + 1
 	}
+	newRows, newColumns := newCells(sheet.newMaxRow, sheet.newMaxColumn)
+	for i := range sheet.Rows {
+		copy(newRows[i], sheet.Rows[i])
+	}
+	for i := range sheet.Columns {
+		copy(newColumns[i], sheet.Columns[i])
+	}
+	sheet.Rows = newRows
+	sheet.Columns = newColumns
+	cell := Cell{
+		Row:    uint(row),
+		Column: uint(column),
+		Value:  val,
+	}
+
+	sheet.Rows[row][column] = cell
+	sheet.Columns[column][row] = cell
 	for _, cell := range sheet.modifiedCells {
 		if cell.Row == uint(row) && cell.Column == uint(column) {
 			cell.Value = val
 			return
 		}
 	}
-	sheet.modifiedCells = append(sheet.modifiedCells, &Cell{
-		Row:    uint(row),
-		Column: uint(column),
-		Value:  val,
-	})
+	sheet.modifiedCells = append(sheet.modifiedCells, &cell)
 }
 
 // Synchronize reflects the changes of the sheet.
 func (sheet *Sheet) Synchronize() (err error) {
 	err = sheet.Spreadsheet.service.SyncSheet(sheet)
+	return
+}
+
+func newCells(maxRow, maxColumn uint) (rows, columns [][]Cell) {
+	rows = make([][]Cell, maxRow+1)
+	for i := uint(0); i < maxRow+1; i++ {
+		rows[i] = make([]Cell, maxColumn+1)
+	}
+	columns = make([][]Cell, maxColumn+1)
+	for i := uint(0); i < maxColumn+1; i++ {
+		columns[i] = make([]Cell, maxRow+1)
+	}
 	return
 }
