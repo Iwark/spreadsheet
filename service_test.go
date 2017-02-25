@@ -44,6 +44,18 @@ func (suite *TestSuite) TestSyncSheet() {
 	suite.NoError(err)
 }
 
+func (suite *TestSuite) TestDeleteRows() {
+	spreadsheet, err := suite.service.FetchSpreadsheet(spreadsheetID)
+	suite.Require().NoError(err)
+	sheet, err := spreadsheet.SheetByTitle("TestSheet2")
+	suite.Require().NoError(err)
+	rowCount := sheet.Properties.GridProperties.RowCount
+
+	err = sheet.DeleteRows(0, 1)
+	suite.NoError(err)
+	suite.Equal(rowCount-1, sheet.Properties.GridProperties.RowCount)
+}
+
 func TestRun(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }

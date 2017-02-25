@@ -87,7 +87,15 @@ err := sheet.Synchronize()
 ### Expand a sheet
 
 ```go
-err := service.ExpandSheet(sheet, 20, 10)
+err := service.ExpandSheet(sheet, 20, 10) // Expand the sheet to 20 rows and 10 columns
+```
+
+### Delete Rows / Columns
+
+```go
+err := sheet.DeleteRows(0, 3) // Delete first three rows in the sheet
+
+err := sheet.DeleteColumns(1, 4) // Delete columns B:D
 ```
 
 More usage can be found at the [godoc](https://godoc.org/gopkg.in/Iwark/spreadsheet.v2).

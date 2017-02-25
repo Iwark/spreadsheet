@@ -175,8 +175,19 @@ func (r *updateRequest) ClearBasicFilter() {
 
 }
 
-func (r *updateRequest) DeleteDimension() {
-
+// DeleteDemension deletes rows or columns
+func (r *updateRequest) DeleteDimension(sheet *Sheet, dimension string, start, end int) (ret *updateRequest) {
+	r.body["requests"] = append(r.body["requests"], map[string]interface{}{
+		"deleteDimension": map[string]interface{}{
+			"range": map[string]interface{}{
+				"sheetId":    sheet.Properties.ID,
+				"dimension":  dimension,
+				"startIndex": start,
+				"endIndex":   end,
+			},
+		},
+	})
+	return r
 }
 
 func (r *updateRequest) DeleteEmbeddedObject() {

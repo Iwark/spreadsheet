@@ -100,6 +100,18 @@ func (sheet *Sheet) Update(row, column int, val string) {
 	sheet.modifiedCells = append(sheet.modifiedCells, &cell)
 }
 
+// DeleteRows deletes rows from the sheet
+func (sheet *Sheet) DeleteRows(start, end int) (err error) {
+	err = sheet.Spreadsheet.service.DeleteRows(sheet, start, end)
+	return
+}
+
+// DeleteColumns deletes columns from the sheet
+func (sheet *Sheet) DeleteColumns(start, end int) (err error) {
+	err = sheet.Spreadsheet.service.DeleteColumns(sheet, start, end)
+	return
+}
+
 // Synchronize reflects the changes of the sheet.
 func (sheet *Sheet) Synchronize() (err error) {
 	err = sheet.Spreadsheet.service.SyncSheet(sheet)

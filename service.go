@@ -101,6 +101,30 @@ func (s *Service) ExpandSheet(sheet *Sheet, row, column uint) (err error) {
 	return
 }
 
+// DeleteRows deletes rows from the sheet
+func (s *Service) DeleteRows(sheet *Sheet, start, end int) (err error) {
+	sheet.Properties.GridProperties.RowCount -= uint(end - start)
+	sheet.newMaxRow -= uint(end - start)
+	r, err := newUpdateRequest(sheet.Spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.DeleteDimension(sheet, "ROWS", start, end).Do()
+	return
+}
+
+// DeleteColumns deletes columns from the sheet
+func (s *Service) DeleteColumns(sheet *Sheet, start, end int) (err error) {
+	sheet.Properties.GridProperties.ColumnCount -= uint(end - start)
+	sheet.newMaxRow -= uint(end - start)
+	r, err := newUpdateRequest(sheet.Spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.DeleteDimension(sheet, "COLUMNS", start, end).Do()
+	return
+}
+
 func (s *Service) syncCells(sheet *Sheet) (err error) {
 	path := fmt.Sprintf("/spreadsheets/%s/values:batchUpdate", sheet.Spreadsheet.ID)
 	params := map[string]interface{}{
