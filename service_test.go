@@ -32,6 +32,7 @@ func (suite *TestSuite) TestFetchSpreadsheet() {
 	suite.Equal("GRID", sheet.Properties.SheetType)
 	suite.True(len(sheet.Rows) >= 3)
 	suite.True(len(sheet.Columns) >= 3)
+	suite.Equal(uint(2), sheet.Rows[1][2].Column)
 }
 
 func (suite *TestSuite) TestSyncSheet() {

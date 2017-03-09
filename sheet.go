@@ -121,11 +121,17 @@ func (sheet *Sheet) Synchronize() (err error) {
 func newCells(maxRow, maxColumn uint) (rows, columns [][]Cell) {
 	rows = make([][]Cell, maxRow+1)
 	for i := uint(0); i < maxRow+1; i++ {
-		rows[i] = make([]Cell, maxColumn+1)
+		rows[i] = make([]Cell, 0, maxColumn+1)
+		for t := uint(0); t < maxColumn+1; t++ {
+			rows[i] = append(rows[i], Cell{Row: i, Column: t})
+		}
 	}
 	columns = make([][]Cell, maxColumn+1)
 	for i := uint(0); i < maxColumn+1; i++ {
-		columns[i] = make([]Cell, maxRow+1)
+		columns[i] = make([]Cell, 0, maxRow+1)
+		for t := uint(0); t < maxRow+1; t++ {
+			columns[i] = append(columns[i], Cell{Row: t, Column: i})
+		}
 	}
 	return
 }
