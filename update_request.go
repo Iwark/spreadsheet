@@ -27,7 +27,7 @@ type updateRequest struct {
 
 func (r *updateRequest) Do() (err error) {
 	if len(r.body["requests"]) == 0 {
-		err = errors.New("Requests must not be empty.")
+		err = errors.New("Requests must not be empty")
 		return
 	}
 	path := fmt.Sprintf("/spreadsheets/%s:batchUpdate", r.spreadsheet.ID)
