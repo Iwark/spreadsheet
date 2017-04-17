@@ -8,6 +8,6 @@ type SheetProperties struct {
 	SheetType      string         `json:"sheetType"`
 	GridProperties GridProperties `json:"gridProperties"`
 	Hidden         bool           `json:"hidden"`
-	TabColor       string         `json:"tabColor"`
+	TabColor       TabColor       `json:"tabColor"`
 	RightToLeft    bool           `json:"rightToLeft"`
 }
