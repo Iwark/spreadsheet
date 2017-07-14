@@ -49,6 +49,16 @@ spreadsheetID := "1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4"
 spreadsheet, err := service.FetchSpreadsheet(spreadsheetID)
 ```
 
+### Create a spreadsheet
+
+```go
+ss, err := service.CreateSpreadsheet(spreadsheet.Spreadsheet{
+	Properties: spreadsheet.Properties{
+		Title: "spreadsheet title",
+	},
+})
+```
+
 ### Find a sheet
 
 ```go

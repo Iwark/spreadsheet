@@ -53,6 +53,20 @@ type Service struct {
 	client  *http.Client
 }
 
+// CreateSpreadsheet creates a spreadsheet with the given title
+func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, err error) {
+	body, err := s.post("/spreadsheets", map[string]interface{}{
+		"properties": map[string]interface{}{
+			"title": spreadsheet.Properties.Title,
+		},
+	})
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal([]byte(body), &resp)
+	return
+}
+
 // FetchSpreadsheet fetches the spreadsheet by the id.
 func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err error) {
 	path := fmt.Sprintf("/spreadsheets/%s?includeGridData=true", id)

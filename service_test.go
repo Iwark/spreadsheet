@@ -19,6 +19,17 @@ func (suite *TestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 }
 
+func (suite *TestSuite) TestCreateSpreadsheet() {
+	title := "testspreadsheet"
+	spreadsheet, err := suite.service.CreateSpreadsheet(Spreadsheet{
+		Properties: Properties{
+			Title: title,
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Equal(spreadsheet.Properties.Title, title)
+}
+
 func (suite *TestSuite) TestFetchSpreadsheet() {
 	spreadsheet, err := suite.service.FetchSpreadsheet(spreadsheetID)
 	suite.Require().NoError(err)
