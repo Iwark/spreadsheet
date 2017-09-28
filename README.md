@@ -5,7 +5,6 @@ spreadsheet
 [![GoReport](https://goreportcard.com/badge/Iwark/spreadsheet)](http://goreportcard.com/report/Iwark/spreadsheet)
 [![GoDoc](https://godoc.org/gopkg.in/Iwark/spreadsheet.v2?status.svg)](https://godoc.org/gopkg.in/Iwark/spreadsheet.v2)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Project Status](https://img.shields.io/badge/status-beta-yellow.svg)
 
 Package `spreadsheet` provides fast and easy-to-use access to the Google Sheets API for reading and updating spreadsheets.
 
