@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// https://docs.google.com/spreadsheets/d/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/edit#gid=0
 const spreadsheetID = "1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4"
 
 type TestSuite struct {
@@ -44,6 +45,15 @@ func (suite *TestSuite) TestFetchSpreadsheet() {
 	suite.True(len(sheet.Rows) >= 3)
 	suite.True(len(sheet.Columns) >= 3)
 	suite.Equal(uint(2), sheet.Rows[1][2].Column)
+	for _, gridData := range sheet.Data.GridData {
+		for i, meta := range gridData.RowMetadata {
+			if gridData.StartRow+uint(i) == 4 {
+				suite.True(meta.HiddenByUser)
+			} else {
+				suite.False(meta.HiddenByUser)
+			}
+		}
+	}
 }
 
 func (suite *TestSuite) TestSyncSheet() {
