@@ -11,5 +11,5 @@ type Cell struct {
 
 // Pos returns the cell's position like "A1"
 func (cell *Cell) Pos() string {
-	return numberToLetter(int(cell.Column)+1) + fmt.Sprintf("%d", cell.Row+1)
+	return NumberToLetter(int(cell.Column)+1) + fmt.Sprintf("%d", cell.Row+1)
 }
