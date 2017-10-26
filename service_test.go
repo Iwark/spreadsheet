@@ -29,6 +29,8 @@ func (suite *TestSuite) TestCreateSpreadsheet() {
 	})
 	suite.Require().NoError(err)
 	suite.Equal(spreadsheet.Properties.Title, title)
+	sheet, _ := spreadsheet.SheetByIndex(0)
+	suite.service.ExpandSheet(sheet, 20, 10)
 }
 
 func (suite *TestSuite) TestFetchSpreadsheet() {

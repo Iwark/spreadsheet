@@ -64,7 +64,10 @@ func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, 
 		return
 	}
 	err = json.Unmarshal([]byte(body), &resp)
-	return
+	if err != nil {
+		return
+	}
+	return s.FetchSpreadsheet(resp.ID)
 }
 
 // FetchSpreadsheet fetches the spreadsheet by the id.
