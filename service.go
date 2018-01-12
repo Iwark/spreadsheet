@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -72,7 +73,9 @@ func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, 
 
 // FetchSpreadsheet fetches the spreadsheet by the id.
 func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err error) {
-	path := fmt.Sprintf("/spreadsheets/%s?includeGridData=true", id)
+	fields := "spreadsheetId,properties.title,sheets(properties,data.rowData.values(formattedValue))"
+	fields = url.QueryEscape(fields)
+	path := fmt.Sprintf("/spreadsheets/%s?fields=%s", id, fields)
 	body, err := s.get(path)
 	if err != nil {
 		return
