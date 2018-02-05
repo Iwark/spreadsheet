@@ -115,6 +115,11 @@ func (s *Service) ExpandSheet(sheet *Sheet, row, column uint) (err error) {
 		return
 	}
 	err = r.UpdateSheetProperties(sheet, &props).Do()
+	if err != nil {
+		return
+	}
+	sheet.newMaxRow = row
+	sheet.newMaxColumn = column
 	return
 }
 
