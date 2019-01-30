@@ -56,10 +56,16 @@ type Service struct {
 
 // CreateSpreadsheet creates a spreadsheet with the given title
 func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, err error) {
+	sheets := make([]map[string]interface{}, 1)
+	for s := range spreadsheet.Sheets {
+		sheet := spreadsheet.Sheets[s]
+		sheets = append(sheets, map[string]interface{}{"properties": map[string]interface{}{"title": sheet.Properties.Title}})
+	}
 	body, err := s.post("/spreadsheets", map[string]interface{}{
 		"properties": map[string]interface{}{
 			"title": spreadsheet.Properties.Title,
 		},
+		"sheets": sheets,
 	})
 	if err != nil {
 		return

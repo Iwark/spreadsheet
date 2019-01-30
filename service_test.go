@@ -33,6 +33,36 @@ func (suite *TestSuite) TestCreateSpreadsheet() {
 	suite.service.ExpandSheet(sheet, 20, 10)
 }
 
+func (suite *TestSuite) TestCreateSpreadsheetWithSheets() {
+	title := "testspreadsheet"
+	sheetTitles := []string{"sheet 1", "sheet 2"}
+	spreadsheet, err := suite.service.CreateSpreadsheet(Spreadsheet{
+		Properties: Properties{
+			Title: title,
+		},
+		Sheets: []Sheet{
+			Sheet{
+				Properties: SheetProperties{
+					Title: sheetTitles[0],
+				},
+			},
+			Sheet{
+				Properties: SheetProperties{
+					Title: sheetTitles[1],
+				},
+			},
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Equal(spreadsheet.Properties.Title, title)
+	suite.Equal(spreadsheet.Sheets[0].Properties.Title, sheetTitles[0])
+	suite.Equal(spreadsheet.Sheets[1].Properties.Title, sheetTitles[1])
+	_, err = spreadsheet.SheetByIndex(0)
+	suite.Require().NoError(err)
+	_, err = spreadsheet.SheetByIndex(1)
+	suite.Require().NoError(err)
+}
+
 func (suite *TestSuite) TestFetchSpreadsheet() {
 	spreadsheet, err := suite.service.FetchSpreadsheet(spreadsheetID)
 	suite.Require().NoError(err)
