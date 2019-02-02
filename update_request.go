@@ -127,12 +127,22 @@ func (r *updateRequest) DeleteNamedRange() {
 
 }
 
-func (r *updateRequest) AddSheet() {
-
+func (r *updateRequest) AddSheet(sheetProperties SheetProperties) *updateRequest {
+	r.body["requests"] = append(r.body["requests"], map[string]interface{}{
+		"addSheet": map[string]interface{}{
+			"properties": sheetProperties,
+		},
+	})
+	return r
 }
 
-func (r *updateRequest) DeleteSheet() {
-
+func (r *updateRequest) DeleteSheet(sheetID uint) *updateRequest {
+	r.body["requests"] = append(r.body["requests"], map[string]interface{}{
+		"deleteSheet": map[string]interface{}{
+			"sheetId": sheetID,
+		},
+	})
+	return r
 }
 
 func (r *updateRequest) AutoFill() {

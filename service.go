@@ -88,6 +88,45 @@ func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err erro
 	return
 }
 
+// ReloadSpreadsheet reloads the spreadsheet
+func (s *Service) ReloadSpreadsheet(spreadsheet *Spreadsheet) (err error) {
+	newSpreadsheet, err := s.FetchSpreadsheet(spreadsheet.ID)
+	if err != nil {
+		return
+	}
+	spreadsheet.Properties = newSpreadsheet.Properties
+	spreadsheet.Sheets = newSpreadsheet.Sheets
+	return
+}
+
+// AddSheet adds a sheet
+func (s *Service) AddSheet(spreadsheet *Spreadsheet, sheetProperties SheetProperties) (err error) {
+	r, err := newUpdateRequest(spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.AddSheet(sheetProperties).Do()
+	if err != nil {
+		return
+	}
+	err = s.ReloadSpreadsheet(spreadsheet)
+	return
+}
+
+// DeleteSheet deletes the sheet
+func (s *Service) DeleteSheet(spreadsheet *Spreadsheet, sheetID uint) (err error) {
+	r, err := newUpdateRequest(spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.DeleteSheet(sheetID).Do()
+	if err != nil {
+		return
+	}
+	err = s.ReloadSpreadsheet(spreadsheet)
+	return
+}
+
 // SyncSheet updates sheet
 func (s *Service) SyncSheet(sheet *Sheet) (err error) {
 	if sheet.newMaxRow > sheet.Properties.GridProperties.RowCount ||
