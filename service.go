@@ -56,10 +56,16 @@ type Service struct {
 
 // CreateSpreadsheet creates a spreadsheet with the given title
 func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, err error) {
+	sheets := make([]map[string]interface{}, 1)
+	for s := range spreadsheet.Sheets {
+		sheet := spreadsheet.Sheets[s]
+		sheets = append(sheets, map[string]interface{}{"properties": map[string]interface{}{"title": sheet.Properties.Title}})
+	}
 	body, err := s.post("/spreadsheets", map[string]interface{}{
 		"properties": map[string]interface{}{
 			"title": spreadsheet.Properties.Title,
 		},
+		"sheets": sheets,
 	})
 	if err != nil {
 		return
@@ -85,6 +91,45 @@ func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err erro
 		return
 	}
 	spreadsheet.service = s
+	return
+}
+
+// ReloadSpreadsheet reloads the spreadsheet
+func (s *Service) ReloadSpreadsheet(spreadsheet *Spreadsheet) (err error) {
+	newSpreadsheet, err := s.FetchSpreadsheet(spreadsheet.ID)
+	if err != nil {
+		return
+	}
+	spreadsheet.Properties = newSpreadsheet.Properties
+	spreadsheet.Sheets = newSpreadsheet.Sheets
+	return
+}
+
+// AddSheet adds a sheet
+func (s *Service) AddSheet(spreadsheet *Spreadsheet, sheetProperties SheetProperties) (err error) {
+	r, err := newUpdateRequest(spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.AddSheet(sheetProperties).Do()
+	if err != nil {
+		return
+	}
+	err = s.ReloadSpreadsheet(spreadsheet)
+	return
+}
+
+// DeleteSheet deletes the sheet
+func (s *Service) DeleteSheet(spreadsheet *Spreadsheet, sheetID uint) (err error) {
+	r, err := newUpdateRequest(spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.DeleteSheet(sheetID).Do()
+	if err != nil {
+		return
+	}
+	err = s.ReloadSpreadsheet(spreadsheet)
 	return
 }
 
@@ -118,6 +163,11 @@ func (s *Service) ExpandSheet(sheet *Sheet, row, column uint) (err error) {
 		return
 	}
 	err = r.UpdateSheetProperties(sheet, &props).Do()
+	if err != nil {
+		return
+	}
+	sheet.newMaxRow = row
+	sheet.newMaxColumn = column
 	return
 }
 

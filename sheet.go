@@ -74,15 +74,20 @@ func (sheet *Sheet) Update(row, column int, val string) {
 	if uint(column)+1 > sheet.newMaxColumn {
 		sheet.newMaxColumn = uint(column) + 1
 	}
-	newRows, newColumns := newCells(sheet.newMaxRow, sheet.newMaxColumn)
-	for i := range sheet.Rows {
-		copy(newRows[i], sheet.Rows[i])
+
+	if uint(len(sheet.Rows)) < sheet.newMaxRow+1 ||
+		uint(len(sheet.Columns)) < sheet.newMaxColumn+1 {
+		newRows, newColumns := newCells(sheet.newMaxRow, sheet.newMaxColumn)
+		for i := range sheet.Rows {
+			copy(newRows[i], sheet.Rows[i])
+		}
+		for i := range sheet.Columns {
+			copy(newColumns[i], sheet.Columns[i])
+		}
+		sheet.Rows = newRows
+		sheet.Columns = newColumns
 	}
-	for i := range sheet.Columns {
-		copy(newColumns[i], sheet.Columns[i])
-	}
-	sheet.Rows = newRows
-	sheet.Columns = newColumns
+
 	cell := Cell{
 		Row:    uint(row),
 		Column: uint(column),
