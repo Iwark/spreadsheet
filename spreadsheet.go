@@ -29,10 +29,10 @@ func (spreadsheet *Spreadsheet) UnmarshalJSON(data []byte) error {
 }
 
 // SheetByIndex gets a sheet by the given index.
-func (spreadsheet *Spreadsheet) SheetByIndex(i uint) (sheet *Sheet, err error) {
-	for _, s := range spreadsheet.Sheets {
-		if s.Properties.Index == i {
-			sheet = &s
+func (spreadsheet *Spreadsheet) SheetByIndex(index uint) (sheet *Sheet, err error) {
+	for i, s := range spreadsheet.Sheets {
+		if s.Properties.Index == index {
+			sheet = &spreadsheet.Sheets[i]
 			return
 		}
 	}
@@ -42,9 +42,9 @@ func (spreadsheet *Spreadsheet) SheetByIndex(i uint) (sheet *Sheet, err error) {
 
 // SheetByID gets a sheet by the given ID.
 func (spreadsheet *Spreadsheet) SheetByID(id uint) (sheet *Sheet, err error) {
-	for _, s := range spreadsheet.Sheets {
+	for i, s := range spreadsheet.Sheets {
 		if s.Properties.ID == id {
-			sheet = &s
+			sheet = &spreadsheet.Sheets[i]
 			return
 		}
 	}
@@ -54,9 +54,9 @@ func (spreadsheet *Spreadsheet) SheetByID(id uint) (sheet *Sheet, err error) {
 
 // SheetByTitle gets a sheet by the given title.
 func (spreadsheet *Spreadsheet) SheetByTitle(title string) (sheet *Sheet, err error) {
-	for _, s := range spreadsheet.Sheets {
+	for i, s := range spreadsheet.Sheets {
 		if s.Properties.Title == title {
-			sheet = &s
+			sheet = &spreadsheet.Sheets[i]
 			return
 		}
 	}
