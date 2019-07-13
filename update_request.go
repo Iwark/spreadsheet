@@ -212,8 +212,16 @@ func (r *updateRequest) DuplicateFilterView() {
 
 }
 
-func (r *updateRequest) DuplicateSheet() {
-
+// DuplicateSheet duplicates the contents of a sheet
+func (r *updateRequest) DuplicateSheet(sheet *Sheet, index int, title string) (ret *updateRequest) {
+	r.body["requests"] = append(r.body["requests"], map[string]interface{}{
+		"duplicateSheet": map[string]interface{}{
+			"sourceSheetId":    sheet.Properties.ID,
+			"insertSheetIndex": index,
+			"newSheetName":     title,
+		},
+	})
+	return r
 }
 
 func (r *updateRequest) FindReplace() {

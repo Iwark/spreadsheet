@@ -126,6 +126,20 @@ func (s *Service) AddSheet(spreadsheet *Spreadsheet, sheetProperties SheetProper
 	return
 }
 
+// DuplicateSheet duplicates the contents of a sheet
+func (s *Service) DuplicateSheet(spreadsheet *Spreadsheet, sheet *Sheet, index int, title string) (err error) {
+	r, err := newUpdateRequest(spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.DuplicateSheet(sheet, index, title).Do()
+	if err != nil {
+		return
+	}
+	err = s.ReloadSpreadsheet(spreadsheet)
+	return
+}
+
 // DeleteSheet deletes the sheet
 func (s *Service) DeleteSheet(spreadsheet *Spreadsheet, sheetID uint) (err error) {
 	r, err := newUpdateRequest(spreadsheet)
