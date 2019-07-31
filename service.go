@@ -161,8 +161,8 @@ func (s *Service) SyncSheet(sheet *Sheet) (err error) {
 		return
 	}
 	sheet.modifiedCells = []*Cell{}
-	sheet.newMaxRow = sheet.Properties.GridProperties.RowCount
-	sheet.newMaxColumn = sheet.Properties.GridProperties.ColumnCount
+	sheet.Properties.GridProperties.RowCount = sheet.newMaxRow
+	sheet.Properties.GridProperties.ColumnCount = sheet.newMaxColumn
 	return
 }
 

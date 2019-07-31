@@ -1,6 +1,8 @@
 package spreadsheet
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // Sheet is a sheet in a spreadsheet.
 type Sheet struct {
