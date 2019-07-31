@@ -156,7 +156,11 @@ func (s *Service) SyncSheet(sheet *Sheet) (err error) {
 			return
 		}
 	}
-	err = s.syncCells(sheet)
+	r, err := newUpdateRequest(sheet.Spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.UpdateCells(sheet).Do()
 	if err != nil {
 		return
 	}
@@ -206,40 +210,6 @@ func (s *Service) DeleteColumns(sheet *Sheet, start, end int) (err error) {
 		return
 	}
 	err = r.DeleteDimension(sheet, "COLUMNS", start, end).Do()
-	return
-}
-
-func (s *Service) syncCells(sheet *Sheet) (err error) {
-	path := fmt.Sprintf("/spreadsheets/%s:batchUpdate", sheet.Spreadsheet.ID)
-	params := map[string]interface{}{
-		"requests": make([]map[string]interface{}, 0, len(sheet.modifiedCells)),
-	}
-	for _, cell := range sheet.modifiedCells {
-		request := map[string]interface{}{
-			"updateCells": map[string]interface{}{
-				"rows": []map[string]interface{}{
-					map[string]interface{}{
-						"values": []map[string]interface{}{
-							map[string]interface{}{
-								"userEnteredValue": map[string]string{
-									cellValueType(cell.Value): cell.Value,
-								},
-								"note": cell.Note,
-							},
-						},
-					},
-				},
-				"fields": "userEnteredValue,note",
-				"start": map[string]interface{}{
-					"sheetId":     sheet.Properties.ID,
-					"rowIndex":    cell.Row,
-					"columnIndex": cell.Column,
-				},
-			},
-		}
-		params["requests"] = append(params["requests"].([]map[string]interface{}), request)
-	}
-	_, err = sheet.Spreadsheet.service.post(path, params)
 	return
 }
 
