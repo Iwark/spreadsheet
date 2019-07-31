@@ -67,8 +67,7 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Update updates cell changes
-func (sheet *Sheet) Update(row, column int, val string) {
+func (sheet *Sheet) updateCellField(row, column int, cell *Cell, field *string, val string, updateModified func(*Cell, string)) {
 	if uint(row)+1 > sheet.newMaxRow {
 		sheet.newMaxRow = uint(row) + 1
 	}
@@ -89,21 +88,30 @@ func (sheet *Sheet) Update(row, column int, val string) {
 		sheet.Columns = newColumns
 	}
 
-	cell := Cell{
-		Row:    uint(row),
-		Column: uint(column),
-		Value:  val,
-	}
+	cell.Row, cell.Column = uint(row), uint(column)
+	*field = val
 
-	sheet.Rows[row][column] = cell
-	sheet.Columns[column][row] = cell
+	sheet.Rows[row][column] = *cell
+	sheet.Columns[column][row] = *cell
 	for _, cell := range sheet.modifiedCells {
 		if cell.Row == uint(row) && cell.Column == uint(column) {
-			cell.Value = val
+			updateModified(cell, val)
 			return
 		}
 	}
-	sheet.modifiedCells = append(sheet.modifiedCells, &cell)
+	sheet.modifiedCells = append(sheet.modifiedCells, cell)
+}
+
+// Update updates cell changes
+func (sheet *Sheet) Update(row, column int, val string) {
+	cell := &sheet.Rows[row][column]
+	sheet.updateCellField(row, column, cell, &cell.Value, val, func(cell *Cell, val string) { cell.Value = val })
+}
+
+// UpdateNote updates a cell's note
+func (sheet *Sheet) UpdateNote(row, column int, note string) {
+	cell := &sheet.Rows[row][column]
+	sheet.updateCellField(row, column, cell, &cell.Note, note, func(cell *Cell, val string) { cell.Note = val })
 }
 
 // DeleteRows deletes rows from the sheet

@@ -210,22 +210,35 @@ func (s *Service) DeleteColumns(sheet *Sheet, start, end int) (err error) {
 }
 
 func (s *Service) syncCells(sheet *Sheet) (err error) {
-	path := fmt.Sprintf("/spreadsheets/%s/values:batchUpdate", sheet.Spreadsheet.ID)
+	path := fmt.Sprintf("/spreadsheets/%s:batchUpdate", sheet.Spreadsheet.ID)
 	params := map[string]interface{}{
-		"valueInputOption": "USER_ENTERED",
-		"data":             make([]map[string]interface{}, 0, len(sheet.modifiedCells)),
+		"requests": make([]map[string]interface{}, 0, len(sheet.modifiedCells)),
 	}
 	for _, cell := range sheet.modifiedCells {
-		valueRange := map[string]interface{}{
-			"range":          sheet.Properties.Title + "!" + cell.Pos(),
-			"majorDimension": "COLUMNS",
-			"values": [][]string{
-				[]string{
-					cell.Value,
+		request := map[string]interface{}{
+			"updateCells": map[string]interface{}{
+				"rows": []map[string]interface{}{
+					map[string]interface{}{
+						"values": []map[string]interface{}{
+							map[string]interface{}{
+								"userEnteredValue": map[string]string{
+									// TODO: pick value type based on input so formulas and stuff work
+									"stringValue": cell.Value,
+								},
+								"note": cell.Note,
+							},
+						},
+					},
+				},
+				"fields": "userEnteredValue,note",
+				"start": map[string]interface{}{
+					"sheetId":     sheet.Properties.ID,
+					"rowIndex":    cell.Row,
+					"columnIndex": cell.Column,
 				},
 			},
 		}
-		params["data"] = append(params["data"].([]map[string]interface{}), valueRange)
+		params["requests"] = append(params["requests"].([]map[string]interface{}), request)
 	}
 	_, err = sheet.Spreadsheet.service.post(path, params)
 	return
