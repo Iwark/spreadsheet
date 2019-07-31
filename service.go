@@ -222,8 +222,7 @@ func (s *Service) syncCells(sheet *Sheet) (err error) {
 						"values": []map[string]interface{}{
 							map[string]interface{}{
 								"userEnteredValue": map[string]string{
-									// TODO: pick value type based on input so formulas and stuff work
-									"stringValue": cell.Value,
+									cellValueType(cell.Value): cell.Value,
 								},
 								"note": cell.Note,
 							},
