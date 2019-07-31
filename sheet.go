@@ -102,16 +102,24 @@ func (sheet *Sheet) updateCellField(row, column int, cell *Cell, field *string, 
 	sheet.modifiedCells = append(sheet.modifiedCells, cell)
 }
 
+// safeCell returns the cell at the given position, or a new one if it doesn't exist
+func (sheet *Sheet) safeCell(row, column int) Cell {
+	if uint(row) > sheet.newMaxRow || uint(column) > sheet.newMaxColumn {
+		return Cell{}
+	}
+	return sheet.Rows[row][column]
+}
+
 // Update updates cell changes
 func (sheet *Sheet) Update(row, column int, val string) {
-	cell := &sheet.Rows[row][column]
-	sheet.updateCellField(row, column, cell, &cell.Value, val, func(cell *Cell, val string) { cell.Value = val })
+	cell := sheet.safeCell(row, column)
+	sheet.updateCellField(row, column, &cell, &cell.Value, val, func(cell *Cell, val string) { cell.Value = val })
 }
 
 // UpdateNote updates a cell's note
 func (sheet *Sheet) UpdateNote(row, column int, note string) {
-	cell := &sheet.Rows[row][column]
-	sheet.updateCellField(row, column, cell, &cell.Note, note, func(cell *Cell, val string) { cell.Note = val })
+	cell := sheet.safeCell(row, column)
+	sheet.updateCellField(row, column, &cell, &cell.Note, note, func(cell *Cell, val string) { cell.Note = val })
 }
 
 // DeleteRows deletes rows from the sheet
