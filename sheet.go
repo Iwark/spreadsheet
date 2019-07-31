@@ -47,6 +47,7 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 					Row:    r,
 					Column: c,
 					Value:  cellData.FormattedValue,
+					Note:   cellData.Note,
 				}
 				cells = append(cells, cell)
 			}

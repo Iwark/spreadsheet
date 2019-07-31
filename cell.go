@@ -7,6 +7,7 @@ type Cell struct {
 	Row    uint
 	Column uint
 	Value  string
+	Note   string
 }
 
 // Pos returns the cell's position like "A1"

@@ -79,7 +79,7 @@ func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, 
 
 // FetchSpreadsheet fetches the spreadsheet by the id.
 func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err error) {
-	fields := "spreadsheetId,properties.title,sheets(properties,data.rowData.values(formattedValue))"
+	fields := "spreadsheetId,properties.title,sheets(properties,data.rowData.values(formattedValue,note))"
 	fields = url.QueryEscape(fields)
 	path := fmt.Sprintf("/spreadsheets/%s?fields=%s", id, fields)
 	body, err := s.get(path)
