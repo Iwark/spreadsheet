@@ -171,21 +171,27 @@ func (r *updateRequest) UpdateBorders() {
 
 func (r *updateRequest) UpdateCells(sheet *Sheet) *updateRequest {
 	for _, cell := range sheet.modifiedCells {
+		values := map[string]interface{}{}
+		for _, field := range strings.Split(cell.modifiedFields, ",") {
+			switch field {
+			case "userEnteredValue":
+				values["userEnteredValue"] = map[string]string{
+					cellValueType(cell.Value): cell.Value,
+				}
+			case "note":
+				values["note"] = cell.Note
+			}
+		}
 		r.body["requests"] = append(r.body["requests"], map[string]interface{}{
 			"updateCells": map[string]interface{}{
 				"rows": []map[string]interface{}{
 					map[string]interface{}{
 						"values": []map[string]interface{}{
-							map[string]interface{}{
-								"userEnteredValue": map[string]string{
-									cellValueType(cell.Value): cell.Value,
-								},
-								"note": cell.Note,
-							},
+							values,
 						},
 					},
 				},
-				"fields": "userEnteredValue,note",
+				"fields": cell.modifiedFields,
 				"start": map[string]interface{}{
 					"sheetId":     sheet.Properties.ID,
 					"rowIndex":    cell.Row,
