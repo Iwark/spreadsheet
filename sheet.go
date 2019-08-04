@@ -1,6 +1,10 @@
 package spreadsheet
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"reflect"
+	"strings"
+)
 
 // Sheet is a sheet in a spreadsheet.
 type Sheet struct {
@@ -67,7 +71,7 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (sheet *Sheet) updateCellField(row, column int, cell *Cell, fieldName string, field *string, val string, updateModified func(*Cell, string)) {
+func (sheet *Sheet) updateCellField(row, column int, fieldName string, val interface{}) {
 	if uint(row)+1 > sheet.newMaxRow {
 		sheet.newMaxRow = uint(row) + 1
 	}
@@ -75,6 +79,7 @@ func (sheet *Sheet) updateCellField(row, column int, cell *Cell, fieldName strin
 		sheet.newMaxColumn = uint(column) + 1
 	}
 
+	var cell *Cell
 	if uint(len(sheet.Rows)) < sheet.newMaxRow+1 ||
 		uint(len(sheet.Columns)) < sheet.newMaxColumn+1 {
 		newRows, newColumns := newCells(sheet.newMaxRow, sheet.newMaxColumn)
@@ -84,48 +89,54 @@ func (sheet *Sheet) updateCellField(row, column int, cell *Cell, fieldName strin
 		for i := range sheet.Columns {
 			copy(newColumns[i], sheet.Columns[i])
 		}
+		cell = &Cell{
+			Row:    uint(row),
+			Column: uint(column),
+		}
 		sheet.Rows = newRows
 		sheet.Columns = newColumns
+	} else {
+		cell = &sheet.Rows[row][column]
 	}
 
-	cell.Row, cell.Column = uint(row), uint(column)
-	*field = val
+	var found bool
+	for _, modifiedCell := range sheet.modifiedCells {
+		if modifiedCell.Row == uint(row) && modifiedCell.Column == uint(column) {
+			cell = modifiedCell
+			found = true
+			break
+		}
+	}
+
+	field, ok := reflect.TypeOf(cell).Elem().FieldByName(fieldName)
+	if !ok {
+		// TODO: log here or something instead of silently exiting
+		return
+	}
+	tag := field.Tag.Get(fieldTag)
+	reflect.ValueOf(cell).Elem().FieldByName(fieldName).Set(reflect.ValueOf(val))
+
+	if len(cell.modifiedFields) == 0 {
+		cell.modifiedFields = tag
+	} else if strings.Index(cell.modifiedFields, tag) == -1 {
+		cell.modifiedFields += "," + tag
+	}
 
 	sheet.Rows[row][column] = *cell
 	sheet.Columns[column][row] = *cell
-	for _, cell := range sheet.modifiedCells {
-		if cell.Row == uint(row) && cell.Column == uint(column) {
-			updateModified(cell, val)
-			cell.addModified(fieldName)
-			return
-		}
+	if !found {
+		sheet.modifiedCells = append(sheet.modifiedCells, cell)
 	}
-	cell.addModified(fieldName)
-	sheet.modifiedCells = append(sheet.modifiedCells, cell)
-}
-
-// safeCell returns the cell at the given position, or a new one if it doesn't exist
-func (sheet *Sheet) safeCell(row, column int) Cell {
-	if uint(row) > sheet.newMaxRow || uint(column) > sheet.newMaxColumn {
-		return Cell{}
-	}
-	return sheet.Rows[row][column]
 }
 
 // Update updates cell changes
 func (sheet *Sheet) Update(row, column int, val string) {
-	cell := sheet.safeCell(row, column)
-	sheet.updateCellField(row, column, &cell, "userEnteredValue", &cell.Value, val, func(cell *Cell, val string) {
-		cell.Value = val
-	})
+	sheet.updateCellField(row, column, "Value", val)
 }
 
 // UpdateNote updates a cell's note
 func (sheet *Sheet) UpdateNote(row, column int, note string) {
-	cell := sheet.safeCell(row, column)
-	sheet.updateCellField(row, column, &cell, "note", &cell.Note, note, func(cell *Cell, val string) {
-		cell.Note = val
-	})
+	sheet.updateCellField(row, column, "Note", note)
 }
 
 // DeleteRows deletes rows from the sheet
