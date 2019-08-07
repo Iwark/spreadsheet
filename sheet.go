@@ -96,7 +96,8 @@ func (sheet *Sheet) updateCellField(row, column int, fieldName string, val inter
 		sheet.Rows = newRows
 		sheet.Columns = newColumns
 	} else {
-		cell = &sheet.Rows[row][column]
+		cellCopy := sheet.Rows[row][column]
+		cell = &cellCopy
 	}
 
 	var found bool
@@ -122,8 +123,11 @@ func (sheet *Sheet) updateCellField(row, column int, fieldName string, val inter
 		cell.modifiedFields += "," + tag
 	}
 
-	sheet.Rows[row][column] = *cell
-	sheet.Columns[column][row] = *cell
+	cellVal := *cell
+	cellVal.modifiedFields = ""
+	sheet.Rows[row][column] = cellVal
+	sheet.Columns[column][row] = cellVal
+
 	if !found {
 		sheet.modifiedCells = append(sheet.modifiedCells, cell)
 	}
