@@ -2,14 +2,12 @@ package spreadsheet
 
 import "fmt"
 
-const fieldTag = "cellData"
-
 // Cell describes a cell data
 type Cell struct {
 	Row    uint
 	Column uint
-	Value  string `cellData:"userEnteredValue"`
-	Note   string `cellData:"note"`
+	Value  string
+	Note   string
 
 	modifiedFields string
 }

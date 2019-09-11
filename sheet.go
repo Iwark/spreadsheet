@@ -2,7 +2,6 @@ package spreadsheet
 
 import (
 	"encoding/json"
-	"reflect"
 	"strings"
 )
 
@@ -71,7 +70,7 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (sheet *Sheet) updateCellField(row, column int, fieldName string, val interface{}) {
+func (sheet *Sheet) updateCellField(row, column int, updater func(c *Cell) string) {
 	if uint(row)+1 > sheet.newMaxRow {
 		sheet.newMaxRow = uint(row) + 1
 	}
@@ -109,14 +108,7 @@ func (sheet *Sheet) updateCellField(row, column int, fieldName string, val inter
 		}
 	}
 
-	field, ok := reflect.TypeOf(cell).Elem().FieldByName(fieldName)
-	if !ok {
-		// TODO: log here or something instead of silently exiting
-		return
-	}
-	tag := field.Tag.Get(fieldTag)
-	reflect.ValueOf(cell).Elem().FieldByName(fieldName).Set(reflect.ValueOf(val))
-
+	tag := updater(cell)
 	if len(cell.modifiedFields) == 0 {
 		cell.modifiedFields = tag
 	} else if strings.Index(cell.modifiedFields, tag) == -1 {
@@ -135,12 +127,18 @@ func (sheet *Sheet) updateCellField(row, column int, fieldName string, val inter
 
 // Update updates cell changes
 func (sheet *Sheet) Update(row, column int, val string) {
-	sheet.updateCellField(row, column, "Value", val)
+	sheet.updateCellField(row, column, func(c *Cell) string {
+		c.Value = val
+		return "userEnteredValue"
+	})
 }
 
 // UpdateNote updates a cell's note
 func (sheet *Sheet) UpdateNote(row, column int, note string) {
-	sheet.updateCellField(row, column, "Note", note)
+	sheet.updateCellField(row, column, func(c *Cell) string {
+		c.Note = note
+		return "note"
+	})
 }
 
 // DeleteRows deletes rows from the sheet
