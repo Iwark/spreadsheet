@@ -21,3 +21,18 @@ func TestNewCells(t *testing.T) {
 	assert.Equal(uint(0), columns[2][0].Row)
 	assert.Equal(uint(2), columns[2][2].Column)
 }
+
+func benchmarkUpdate(t int, b *testing.B) {
+	for f := 0; f < b.N; f++ {
+		s := Sheet{}
+		b.ReportAllocs()
+		for i := 0; i < t; i++ {
+			s.Update(i, i, "")
+		}
+	}
+}
+
+func BenchmarkUpdate1(b *testing.B)    { benchmarkUpdate(1, b) }
+func BenchmarkUpdate10(b *testing.B)   { benchmarkUpdate(10, b) }
+func BenchmarkUpdate100(b *testing.B)  { benchmarkUpdate(100, b) }
+func BenchmarkUpdate1000(b *testing.B) { benchmarkUpdate(1000, b) }
