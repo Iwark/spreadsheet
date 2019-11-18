@@ -8,6 +8,7 @@ import (
 
 // https://docs.google.com/spreadsheets/d/1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4/edit#gid=0
 const spreadsheetID = "1mYiA2T4_QTFUkAXk0BE3u7snN2o5FgSRqxmRrn_Dzh4"
+const TestSheet2ID = 133999772
 
 type TestSuite struct {
 	suite.Suite
@@ -86,6 +87,11 @@ func (suite *TestSuite) TestFetchSpreadsheet() {
 			}
 		}
 	}
+	
+	// Test SheetByID
+	sheet2, err := spreadsheet.SheetByID(TestSheet2ID)
+	suite.Require().NoError(err)
+	suite.Equal(uint(TestSheet2ID), sheet2.Properties.ID)
 }
 
 func (suite *TestSuite) TestAdd_DeleteSheet() {
