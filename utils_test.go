@@ -17,6 +17,15 @@ func TestNumberToLetter(t *testing.T) {
 	assert.Equal("ZA", numberToLetter(677))
 }
 
+func TestCellValueType(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal("stringValue", cellValueType(""))
+	assert.Equal("formulaValue", cellValueType("=ABS(-2)"))
+	assert.Equal("numberValue", cellValueType("-2"))
+	assert.Equal("boolValue", cellValueType("TRUE"))
+	assert.Equal("stringValue", cellValueType("test"))
+}
+
 func BenchmarkNumberToLetter(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {

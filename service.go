@@ -79,7 +79,7 @@ func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, 
 
 // FetchSpreadsheet fetches the spreadsheet by the id.
 func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err error) {
-	fields := "spreadsheetId,properties.title,sheets(properties,data.rowData.values(formattedValue))"
+	fields := "spreadsheetId,properties.title,sheets(properties,data.rowData.values(formattedValue,note))"
 	fields = url.QueryEscape(fields)
 	path := fmt.Sprintf("/spreadsheets/%s?fields=%s", id, fields)
 	body, err := s.get(path)
@@ -156,7 +156,11 @@ func (s *Service) SyncSheet(sheet *Sheet) (err error) {
 			return
 		}
 	}
-	err = s.syncCells(sheet)
+	r, err := newUpdateRequest(sheet.Spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.UpdateCells(sheet).Do()
 	if err != nil {
 		return
 	}
@@ -206,28 +210,6 @@ func (s *Service) DeleteColumns(sheet *Sheet, start, end int) (err error) {
 		return
 	}
 	err = r.DeleteDimension(sheet, "COLUMNS", start, end).Do()
-	return
-}
-
-func (s *Service) syncCells(sheet *Sheet) (err error) {
-	path := fmt.Sprintf("/spreadsheets/%s/values:batchUpdate", sheet.Spreadsheet.ID)
-	params := map[string]interface{}{
-		"valueInputOption": "USER_ENTERED",
-		"data":             make([]map[string]interface{}, 0, len(sheet.modifiedCells)),
-	}
-	for _, cell := range sheet.modifiedCells {
-		valueRange := map[string]interface{}{
-			"range":          sheet.Properties.Title + "!" + cell.Pos(),
-			"majorDimension": "COLUMNS",
-			"values": [][]string{
-				[]string{
-					cell.Value,
-				},
-			},
-		}
-		params["data"] = append(params["data"].([]map[string]interface{}), valueRange)
-	}
-	_, err = sheet.Spreadsheet.service.post(path, params)
 	return
 }
 

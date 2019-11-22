@@ -2,6 +2,7 @@ package spreadsheet
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 // Sheet is a sheet in a spreadsheet.
@@ -49,6 +50,7 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 					Row:    r,
 					Column: c,
 					Value:  cellData.FormattedValue,
+					Note:   cellData.Note,
 				}
 				cells = append(cells, cell)
 			}
@@ -68,8 +70,7 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Update updates cell changes
-func (sheet *Sheet) Update(row, column int, val string) {
+func (sheet *Sheet) updateCellField(row, column int, updater func(c *Cell) string) {
 	if uint(row)+1 > sheet.newMaxRow {
 		sheet.newMaxRow = uint(row) + 1
 	}
@@ -77,6 +78,7 @@ func (sheet *Sheet) Update(row, column int, val string) {
 		sheet.newMaxColumn = uint(column) + 1
 	}
 
+	var cell *Cell
 	if uint(len(sheet.Rows)) < sheet.newMaxRow+1 ||
 		uint(len(sheet.Columns)) < sheet.newMaxColumn+1 {
 		sheet.Rows = appendCells(sheet.Rows, sheet.newMaxRow, sheet.newMaxColumn, func(i, t uint) Cell {
@@ -85,23 +87,55 @@ func (sheet *Sheet) Update(row, column int, val string) {
 		sheet.Columns = appendCells(sheet.Columns, sheet.newMaxColumn, sheet.newMaxRow, func(i, t uint) Cell {
 			return Cell{Row: t, Column: i}
 		})
+		cell = &Cell{
+			Row:    uint(row),
+			Column: uint(column),
+		}
+	} else {
+		cellCopy := sheet.Rows[row][column]
+		cell = &cellCopy
 	}
 
-	cell := Cell{
-		Row:    uint(row),
-		Column: uint(column),
-		Value:  val,
-	}
-
-	sheet.Rows[row][column] = cell
-	sheet.Columns[column][row] = cell
-	for _, cell := range sheet.modifiedCells {
-		if cell.Row == uint(row) && cell.Column == uint(column) {
-			cell.Value = val
-			return
+	var found bool
+	for _, modifiedCell := range sheet.modifiedCells {
+		if modifiedCell.Row == uint(row) && modifiedCell.Column == uint(column) {
+			cell = modifiedCell
+			found = true
+			break
 		}
 	}
-	sheet.modifiedCells = append(sheet.modifiedCells, &cell)
+
+	tag := updater(cell)
+	if len(cell.modifiedFields) == 0 {
+		cell.modifiedFields = tag
+	} else if strings.Index(cell.modifiedFields, tag) == -1 {
+		cell.modifiedFields += "," + tag
+	}
+
+	cellVal := *cell
+	cellVal.modifiedFields = ""
+	sheet.Rows[row][column] = cellVal
+	sheet.Columns[column][row] = cellVal
+
+	if !found {
+		sheet.modifiedCells = append(sheet.modifiedCells, cell)
+	}
+}
+
+// Update updates cell changes
+func (sheet *Sheet) Update(row, column int, val string) {
+	sheet.updateCellField(row, column, func(c *Cell) string {
+		c.Value = val
+		return "userEnteredValue"
+	})
+}
+
+// UpdateNote updates a cell's note
+func (sheet *Sheet) UpdateNote(row, column int, note string) {
+	sheet.updateCellField(row, column, func(c *Cell) string {
+		c.Note = note
+		return "note"
+	})
 }
 
 // DeleteRows deletes rows from the sheet
