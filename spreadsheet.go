@@ -13,6 +13,7 @@ type Spreadsheet struct {
 	// NamedRanges []*NamedRange `json:"namedRanges"`
 
 	service *Service
+	cached  bool
 }
 
 // UnmarshalJSON embeds spreadsheet to sheets.

@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sync"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -42,16 +44,20 @@ func NewService() (s *Service, err error) {
 // NewServiceWithClient makes a new service by the client.
 func NewServiceWithClient(client *http.Client) *Service {
 	return &Service{
-		baseURL: baseURL,
-		client:  client,
+		baseURL:                  baseURL,
+		client:                   client,
+		m:                        new(sync.RWMutex),
+		configForSpreadsheetByID: make(map[string]spreadsheetConfig, 0),
 	}
 }
 
 // Service represents a Sheets API service instance.
 // Service is the main entry point into using this package.
 type Service struct {
-	baseURL string
-	client  *http.Client
+	baseURL                  string
+	client                   *http.Client
+	m                        *sync.RWMutex
+	configForSpreadsheetByID map[string]spreadsheetConfig
 }
 
 // CreateSpreadsheet creates a spreadsheet with the given title
@@ -77,8 +83,36 @@ func (s *Service) CreateSpreadsheet(spreadsheet Spreadsheet) (resp Spreadsheet, 
 	return s.FetchSpreadsheet(resp.ID)
 }
 
+type spreadsheetConfig struct {
+	cacheInterval     time.Duration
+	lastCachedAt      time.Time
+	cachedSpreadsheet Spreadsheet
+}
+
+// FetchSpreadsheetOption is the option for FetchSpreadsheet function
+type FetchSpreadsheetOption func(*spreadsheetConfig)
+
+// WithCache gives a cacheInterval option for FetchSpreadsheet function
+func WithCache(interval time.Duration) FetchSpreadsheetOption {
+	return func(config *spreadsheetConfig) {
+		config.cacheInterval = interval
+	}
+}
+
 // FetchSpreadsheet fetches the spreadsheet by the id.
-func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err error) {
+func (s *Service) FetchSpreadsheet(id string, options ...FetchSpreadsheetOption) (spreadsheet Spreadsheet, err error) {
+	s.m.RLock()
+	config := s.configForSpreadsheetByID[id]
+	s.m.RUnlock()
+	for _, o := range options {
+		o(&config)
+	}
+
+	if config.cacheInterval > 0 && time.Now().Sub(config.lastCachedAt.Add(config.cacheInterval)) <= 0 {
+		// use cache
+		return config.cachedSpreadsheet, nil
+	}
+
 	fields := "spreadsheetId,properties.title,sheets(properties,data.rowData.values(formattedValue,note))"
 	fields = url.QueryEscape(fields)
 	path := fmt.Sprintf("/spreadsheets/%s?fields=%s", id, fields)
@@ -91,6 +125,15 @@ func (s *Service) FetchSpreadsheet(id string) (spreadsheet Spreadsheet, err erro
 		return
 	}
 	spreadsheet.service = s
+
+	if config.cacheInterval > 0 {
+		config.cachedSpreadsheet = spreadsheet
+		config.cachedSpreadsheet.cached = true
+		config.lastCachedAt = time.Now()
+		s.m.Lock()
+		s.configForSpreadsheetByID[id] = config
+		s.m.Unlock()
+	}
 	return
 }
 

@@ -2,6 +2,7 @@ package spreadsheet
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -68,7 +69,7 @@ func (suite *TestSuite) TestFetchSpreadsheet() {
 	spreadsheet, err := suite.service.FetchSpreadsheet(spreadsheetID)
 	suite.Require().NoError(err)
 	suite.Equal(spreadsheetID, spreadsheet.ID)
-	suite.Require().Equal(3, len(spreadsheet.Sheets))
+	suite.Require().Equal(2, len(spreadsheet.Sheets))
 
 	sheet := spreadsheet.Sheets[0]
 	suite.Equal(uint(0), sheet.Properties.ID)
@@ -87,11 +88,20 @@ func (suite *TestSuite) TestFetchSpreadsheet() {
 			}
 		}
 	}
-	
+
 	// Test SheetByID
 	sheet2, err := spreadsheet.SheetByID(TestSheet2ID)
 	suite.Require().NoError(err)
 	suite.Equal(uint(TestSheet2ID), sheet2.Properties.ID)
+}
+
+func (suite *TestSuite) TestFetchSpreadsheetWithCache() {
+	spreadsheet1, err := suite.service.FetchSpreadsheet(spreadsheetID, WithCache(3*time.Second))
+	suite.Require().NoError(err)
+	suite.False(spreadsheet1.cached)
+	spreadsheet2, err := suite.service.FetchSpreadsheet(spreadsheetID)
+	suite.Require().NoError(err)
+	suite.True(spreadsheet2.cached)
 }
 
 func (suite *TestSuite) TestAdd_DeleteSheet() {
