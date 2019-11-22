@@ -68,7 +68,7 @@ func (suite *TestSuite) TestFetchSpreadsheet() {
 	spreadsheet, err := suite.service.FetchSpreadsheet(spreadsheetID)
 	suite.Require().NoError(err)
 	suite.Equal(spreadsheetID, spreadsheet.ID)
-	suite.Require().Equal(2, len(spreadsheet.Sheets))
+	suite.Require().Equal(3, len(spreadsheet.Sheets))
 
 	sheet := spreadsheet.Sheets[0]
 	suite.Equal(uint(0), sheet.Properties.ID)
