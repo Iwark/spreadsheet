@@ -79,15 +79,12 @@ func (sheet *Sheet) Update(row, column int, val string) {
 
 	if uint(len(sheet.Rows)) < sheet.newMaxRow+1 ||
 		uint(len(sheet.Columns)) < sheet.newMaxColumn+1 {
-		newRows, newColumns := newCells(sheet.newMaxRow, sheet.newMaxColumn)
-		for i := range sheet.Rows {
-			copy(newRows[i], sheet.Rows[i])
-		}
-		for i := range sheet.Columns {
-			copy(newColumns[i], sheet.Columns[i])
-		}
-		sheet.Rows = newRows
-		sheet.Columns = newColumns
+		sheet.Rows = appendCells(sheet.Rows, sheet.newMaxRow, sheet.newMaxColumn, func(i, t uint) Cell {
+			return Cell{Row: i, Column: t}
+		})
+		sheet.Columns = appendCells(sheet.Columns, sheet.newMaxColumn, sheet.newMaxRow, func(i, t uint) Cell {
+			return Cell{Row: t, Column: i}
+		})
 	}
 
 	cell := Cell{
@@ -141,4 +138,21 @@ func newCells(maxRow, maxColumn uint) (rows, columns [][]Cell) {
 		}
 	}
 	return
+}
+
+func appendCells(cells [][]Cell, maxRow, maxColumn uint, cell func(uint, uint) Cell) [][]Cell {
+	for i := uint(0); i < maxRow; i++ {
+		if len(cells) == 0 || int(i) > len(cells)-1 {
+			row := make([]Cell, 0, maxColumn)
+			for t := uint(0); t < maxColumn; t++ {
+				row = append(row, cell(i, t))
+			}
+			cells = append(cells, row)
+		} else {
+			for t := uint(len(cells[i]) - 1); t < maxColumn; t++ {
+				cells[i] = append(cells[i], cell(i, t))
+			}
+		}
+	}
+	return cells
 }
