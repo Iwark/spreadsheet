@@ -47,10 +47,12 @@ func (sheet *Sheet) UnmarshalJSON(data []byte) error {
 					maxColumn = int(c)
 				}
 				cell := Cell{
-					Row:    r,
-					Column: c,
-					Value:  cellData.FormattedValue,
-					Note:   cellData.Note,
+					Row:            r,
+					Column:         c,
+					Value:          cellData.FormattedValue,
+					Note:           cellData.Note,
+					rawValue:       cellData.UserEnteredValue,
+					effectiveValue: cellData.EffectiveValue,
 				}
 				cells = append(cells, cell)
 			}
