@@ -298,8 +298,28 @@ func (r *updateRequest) DeleteConditionalFormatRule() {
 
 }
 
-func (r *updateRequest) SortRange() {
+func (r *updateRequest) SortRange(sheet *Sheet, fromCol int, toCol int, fromRow int, toRow int, sortCols ...SortColumn) (ret *updateRequest) {
+	sortSpecs := make([]map[string]interface{}, len(sortCols))
+	for _, sc := range sortCols {
+		sortSpecs = append(sortSpecs, map[string]interface{}{
+			"sortOrder":      sc.Order,
+			"dimensionIndex": sc.Index,
+		})
+	}
 
+	r.body["requests"] = append(r.body["requests"], map[string]interface{}{
+		"sortRange": map[string]interface{}{
+			"range": map[string]interface{}{
+				"sheetId":          sheet.Properties.ID,
+				"startRowIndex":    fromRow,
+				"endRowIndex":      toRow,
+				"startColumnIndex": fromCol,
+				"endColumnIndex":   toCol,
+			},
+			"sortSpecs": sortSpecs,
+		},
+	})
+	return r
 }
 
 func (r *updateRequest) SetDataValidation() {

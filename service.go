@@ -190,6 +190,16 @@ func (s *Service) DeleteSheet(spreadsheet *Spreadsheet, sheetID uint) (err error
 	return
 }
 
+// Sort sorts cells in the sheet
+func (s *Service) SortRange(sheet *Sheet, fromCol int, toCol int, fromRow int, toRow int, sortCols ...SortColumn) (err error) {
+	r, err := newUpdateRequest(sheet.Spreadsheet)
+	if err != nil {
+		return
+	}
+	err = r.SortRange(sheet, fromCol, toCol, fromRow, toRow, sortCols...).Do()
+	return
+}
+
 // SyncSheet updates sheet
 func (s *Service) SyncSheet(sheet *Sheet) (err error) {
 	if sheet.newMaxRow > sheet.Properties.GridProperties.RowCount ||
