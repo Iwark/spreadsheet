@@ -46,7 +46,6 @@ func NewServiceWithClient(client *http.Client) *Service {
 	return &Service{
 		baseURL:                  baseURL,
 		client:                   client,
-		m:                        new(sync.RWMutex),
 		configForSpreadsheetByID: make(map[string]spreadsheetConfig, 0),
 	}
 }
@@ -56,7 +55,7 @@ func NewServiceWithClient(client *http.Client) *Service {
 type Service struct {
 	baseURL                  string
 	client                   *http.Client
-	m                        *sync.RWMutex
+	m                        sync.RWMutex
 	configForSpreadsheetByID map[string]spreadsheetConfig
 }
 
