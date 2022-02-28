@@ -22,6 +22,7 @@ func TestCellValueType(t *testing.T) {
 	assert.Equal("stringValue", cellValueType(""))
 	assert.Equal("formulaValue", cellValueType("=ABS(-2)"))
 	assert.Equal("numberValue", cellValueType("-2"))
+	assert.Equal("numberValue", cellValueType("-2.23333"))
 	assert.Equal("boolValue", cellValueType("TRUE"))
 	assert.Equal("stringValue", cellValueType("test"))
 }
