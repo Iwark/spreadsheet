@@ -24,7 +24,7 @@ func cellValueType(val string) string {
 	if _, err := strconv.Atoi(val); err == nil {
 		return "numberValue"
 	}
-	if f, err := strconv.ParseFloat(val, 64); err == nil && isNumericFloat(f) {
+	if floatVal, err := strconv.ParseFloat(val, 64); err == nil && isNumericFloat(floatVal) {
 		return "numberValue"
 	}
 	if val == "TRUE" || val == "FALSE" {

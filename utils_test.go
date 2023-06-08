@@ -1,6 +1,7 @@
 package spreadsheet
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,15 @@ func TestCellValueType(t *testing.T) {
 	assert.Equal("stringValue", cellValueType("-inf"))
 	assert.Equal("stringValue", cellValueType("-Infinity"))
 	assert.Equal("stringValue", cellValueType("NaN"))
+}
+
+func TestIsNumericFloat(t *testing.T) {
+	assert := assert.New(t)
+	assert.True(isNumericFloat(-2.23333))
+	assert.True(isNumericFloat(0.01234))
+	assert.False(isNumericFloat(math.Inf(1)))
+	assert.False(isNumericFloat(math.Inf(-1)))
+	assert.False(isNumericFloat(math.NaN()))
 }
 
 func BenchmarkNumberToLetter(b *testing.B) {
