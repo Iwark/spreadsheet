@@ -25,6 +25,11 @@ func TestCellValueType(t *testing.T) {
 	assert.Equal("numberValue", cellValueType("-2.23333"))
 	assert.Equal("boolValue", cellValueType("TRUE"))
 	assert.Equal("stringValue", cellValueType("test"))
+	assert.Equal("stringValue", cellValueType("inf"))
+	assert.Equal("stringValue", cellValueType("Infinity"))
+	assert.Equal("stringValue", cellValueType("-inf"))
+	assert.Equal("stringValue", cellValueType("-Infinity"))
+	assert.Equal("stringValue", cellValueType("NaN"))
 }
 
 func BenchmarkNumberToLetter(b *testing.B) {
