@@ -1,6 +1,7 @@
 package spreadsheet
 
 import (
+	"math"
 	"strconv"
 )
 
@@ -23,7 +24,7 @@ func cellValueType(val string) string {
 	if _, err := strconv.Atoi(val); err == nil {
 		return "numberValue"
 	}
-	if _, err := strconv.ParseFloat(val, 64); err == nil {
+	if floatVal, err := strconv.ParseFloat(val, 64); err == nil && isNumericFloat(floatVal) {
 		return "numberValue"
 	}
 	if val == "TRUE" || val == "FALSE" {
@@ -31,4 +32,12 @@ func cellValueType(val string) string {
 	}
 
 	return "stringValue"
+}
+
+func isNumericFloat(val float64) bool {
+	if math.IsInf(val, 1) || math.IsInf(val, -1) || math.IsNaN(val) {
+		return false
+	}
+
+	return true
 }
