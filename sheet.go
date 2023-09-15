@@ -152,6 +152,21 @@ func (sheet *Sheet) DeleteColumns(start, end int) (err error) {
 	return
 }
 
+// Sorting order
+const SortOrderAscending = "ASCENDING"
+const SortOrderDescending = "DESCENDING"
+
+type SortColumn struct {
+	Index int
+	Order string
+}
+
+// Sort sorts cells in the sheet
+func (sheet *Sheet) Sort(fromCol int, toCol int, fromRow int, toRow int, sortCols ...SortColumn) (err error) {
+	err = sheet.Spreadsheet.service.SortRange(sheet, fromCol, toCol, fromRow, toRow, sortCols...)
+	return
+}
+
 // Synchronize reflects the changes of the sheet.
 func (sheet *Sheet) Synchronize() (err error) {
 	err = sheet.Spreadsheet.service.SyncSheet(sheet)
